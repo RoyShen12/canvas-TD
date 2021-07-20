@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link href="dist/global.css" rel="stylesheet" type="text/css">
+  <title>TD</title>
+  <!-- <script type="text/javascript" src="pace.min.js"></script> -->
+  <script type="text/javascript" src="dist/lodash.min.js"></script>
+  <script type="text/javascript">
+    document.oncontextmenu = function (e) { e.preventDefault() }
+    if (!localStorage.getItem('debug_mode')) {
+      localStorage.setItem('debug_mode', '0')
+    }
+  </script>
+  <script type="text/javascript" src="dist/astar.min.js"></script>
+  <script type="text/javascript" src="dist/main.js"></script>
+</head>
+
+<body onload="run()">
+  <div id="loading_mask" class="el-loading-mask">
+    <div class="el-loading-spinner">
+      <svg viewBox="25 25 50 50" class="circular">
+        <circle cx="50" cy="50" r="20" fill="none" class="path"></circle>
+        <p id="loading_text" class="el-loading-text">拼命加载中</p>
+      </svg>
+      <!---->
+    </div>
+  </div>
+  <div id="status_block" class="bar" style="display: none;"></div>
+  <div id="gem_block" class="bar bar2" style="display: none;"></div>
+</body>
+
+</html>

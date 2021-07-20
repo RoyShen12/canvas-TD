@@ -1,0 +1,18 @@
+{
+  "scripts": {
+    "run-server": "live-server --port=5000 --host=localhost --no-css-inject --ignore=**/src/**,**/.git/**",
+    "dev": "tsc -w",
+    "start": "concurrently \"npm:run-server\" \"npm:dev\"",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.171",
+    "concurrently": "^6.2.0",
+    "live-server": "^1.2.1",
+    "prettier": "^2.3.2",
+    "prettylint": "^1.0.0"
+  },
+  "dependencies": {
+    "typescript": "3.9.10"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "outFile": "./dist/main.js",
+    "target": "esnext",
+    "lib": [
+      "dom",
+      "es6",
+      "dom.iterable",
+      "scripthost",
+      "es7"
+    ],
+    "allowJs": false,
+    "allowUmdGlobalAccess": true,
+    "allowUnusedLabels": false,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "strictNullChecks": true,
+    "strictPropertyInitialization": true,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "removeComments": true
+  },
+  "include": [
+    "./src/*"
+  ],
+  "exclude": [
+    "./src/stage.ts"
+  ],
+  "compileOnSave": true
+}

@@ -1,0 +1,212 @@
+* {
+  font-family: Game;
+}
+html,
+body {
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  margin: 0;
+  padding: 0;
+}
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(136, 136, 136, 0.8);
+  border-radius: 20px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(85, 85, 85, 0.8);
+}
+canvas {
+  margin: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  visibility: visible;
+  border: 0;
+}
+.bar {
+  background-color: rgb(243, 243, 243);
+  border: 1px solid rgba(33, 33, 33, 0.5);
+  font-size: 12px;
+  z-index: 9;
+  position: fixed;
+  padding: 7px 5px;
+  max-height: 360px;
+  overflow-y: scroll;
+  border-radius: 4px;
+}
+.bar2 {
+  max-height: 200px;
+  border-top: 1px solid #b9bcc2;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.row_nh {
+  justify-content: space-between;
+  display: flex;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.row {
+  line-height: 20px;
+  justify-content: space-between;
+  display: flex;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.division {
+  display: block;
+  height: 1px;
+  width: 100%;
+  margin: 3px 0;
+  background-color: #dcdfe6;
+  position: relative;
+}
+.division_vertical {
+  display: inline-block;
+  width: 1px;
+  height: 1em;
+  margin: 0 3px;
+  vertical-align: middle;
+  background-color: #dcdfe6;
+  position: relative;
+}
+.lg_gem_img {
+  max-height: 30px;
+}
+button {
+  transform: scale(0.91667);
+  font-size: 12px;
+  border-radius: 4px;
+  padding: 1px 8px;
+  border: 1px solid rgba(33, 33, 33, 0.5);
+  box-shadow: none;
+  color: #303133;
+  cursor: pointer;
+}
+button:disabled {
+  color: #7f848f;
+  background-color: rgba(192, 196, 204, 0.8);
+}
+.sp_btn {
+  transform: none;
+  font-size: 18px;
+  position: fixed;
+  color: rgba(244, 244, 244, 1);
+  background-color: rgba(64, 158, 255, 0.7);
+  border: 0;
+  padding: 4px 15px;
+  width: 100px;
+  height: 32px;
+}
+.sc_btn {
+  transform: none;
+  font-size: 18px;
+  position: fixed;
+  color: rgba(244, 244, 244, 1);
+  background-color: rgba(230, 162, 60, 0.7);
+  border: 0;
+  padding: 4px 15px;
+  width: 100px;
+  height: 32px;
+}
+.tm_btn {
+  transform: none;
+  font-size: 14px;
+  position: fixed;
+  color: rgba(244, 244, 244, 1);
+  background-color: rgba(144, 147, 153, 0.7);
+  border: 0;
+  padding: 4px 15px;
+  width: auto;
+  height: 32px;
+}
+
+.sp_btn:hover {
+  background-color: rgba(102, 177, 255, 0.7);
+  outline: 0;
+}
+.sp_btn:focus,
+.sp_btn:active {
+  background-color: rgba(58, 142, 230, 0.7);
+  outline: 0;
+}
+.sc_btn:hover {
+  background-color: rgba(235, 181, 99, 0.7);
+  outline: 0;
+}
+.sc_btn:focus,
+.sc_btn:active {
+  background-color: rgba(207, 146, 54, 0.7);
+  outline: 0;
+}
+.tm_btn:hover {
+  background-color: rgba(166, 169, 173, 0.7);
+  outline: 0;
+}
+.tm_btn:focus,
+.tm_btn:active {
+  background-color: rgba(166, 169, 173, 0.7);
+  outline: 0;
+}
+/* progress bar */
+.el-loading-mask {
+  position: absolute;
+  z-index: 2000;
+  background-color: hsla(0, 0%, 100%, 0.9);
+  margin: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transition: opacity 0.3s;
+}
+.el-loading-spinner {
+  top: 50%;
+  margin-top: -21px;
+  width: 100%;
+  text-align: center;
+  position: absolute;
+}
+@keyframes loading-rotate {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes loading-dash {
+  0% {
+    stroke-dasharray: 1, 200;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -40px;
+  }
+  to {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -120px;
+  }
+}
+.el-loading-spinner .circular {
+  height: 42px;
+  width: 42px;
+  animation: loading-rotate 2s linear infinite;
+}
+.el-loading-spinner .path {
+  animation: loading-dash 1.5s ease-in-out infinite;
+  stroke-dasharray: 90, 150;
+  stroke-dashoffset: 0;
+  stroke-width: 2;
+  stroke: #409eff;
+  stroke-linecap: round;
+}
+.el-loading-text {
+  font-family: Helvetica Neue, Helvetica, Hiragino Sans GB, Microsoft YaHei;
+  color: #409eff;
+  margin: 3px 0;
+  font-size: 14px;
+  line-height: 1.5em;
+}
