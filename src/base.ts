@@ -244,10 +244,10 @@ class Tools {
   /**
    * - 将新值推入类型数组的尾部，如已满会抛弃最头部的一个值
    * - 返回此数组的实际长度
-   * - 此方法认为所有连续 0 值都来自初始化
+   * - 此方法认为所有连续 -1 值都来自初始化
    */
   static typedArrayPush(tArr: TypedArray, newValue: number) {
-    const zeroIndex = tArr.indexOf(0)
+    const zeroIndex = tArr.indexOf(-1)
     const actualLength = zeroIndex === -1 ? tArr.length : zeroIndex + 1
 
     if (zeroIndex === -1) {
@@ -301,16 +301,7 @@ class Tools {
   /**
    * 绘制带圆角的矩形
    */
-  static renderRoundRect(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    radius: BorderRadius | number,
-    fill: boolean = false,
-    stroke: boolean = true
-  ) {
+  static renderRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: BorderRadius | number, fill: boolean = false, stroke: boolean = true) {
     if (typeof radius === 'number') {
       radius = { tr: radius, tl: radius, br: radius, bl: radius }
     }
@@ -340,28 +331,31 @@ class Tools {
   }
 
   static renderStatistic(
+    name: string,
     ctx: CanvasRenderingContext2D,
     dataArr: TypedArray,
     positionTL: Position,
     width: number,
     height: number,
-    transp?: number,
+    maxV: number,
+    warningV: number,
+    dangerV: number,
+    transparency?: number,
     goodColor?: string,
     warningColor?: string,
     dangerColor?: string
   ) {
-    transp = transp || 0.5
-    goodColor = goodColor || `rgba(103,194,58,${transp})`
-    warningColor = warningColor || `rgba(255,241,184,${transp})`
-    dangerColor = dangerColor || `rgba(255,120,117,${transp})`
+    transparency = transparency || 0.5
+    goodColor = goodColor || `rgba(103,194,58,${transparency})`
+    warningColor = warningColor || `rgba(255,241,184,${transparency})`
+    dangerColor = dangerColor || `rgba(255,120,117,${transparency})`
 
     ctx.fillStyle = goodColor
 
-    const maxV = 50
     const horizonSpan = width / dataArr.length
     const drawHeight = height - 2
 
-    if (!Reflect.get(this.renderStatistic, 'onceWork')) {
+    if (!Reflect.get(this.renderStatistic, name + '-onceWork')) {
       console.log('called')
 
       ctx.save()
@@ -374,30 +368,33 @@ class Tools {
 
       ctx.fillStyle = 'rgb(1,251,124)'
       ctx.fillRect(positionTL.x + width, positionTL.y + (drawHeight / 3) * 2 - 2, 4, 1)
-      ctx.fillText('16.67 ms', positionTL.x + width + 6, positionTL.y + (drawHeight / 3) * 2)
+      ctx.fillText(`${dangerV} ms`, positionTL.x + width + 6, positionTL.y + (drawHeight / 3) * 2)
 
       ctx.fillStyle = 'rgb(0,0,0)'
       ctx.fillRect(positionTL.x + width, positionTL.y + drawHeight - 2, 4, 1)
       ctx.fillText('0 ms', positionTL.x + width + 6, positionTL.y + drawHeight)
       ctx.restore()
 
-      Reflect.set(this.renderStatistic, 'onceWork', true)
+      Reflect.set(this.renderStatistic, name + '-onceWork', true)
     }
 
     ctx.clearRect(positionTL.x, positionTL.y, width, drawHeight)
 
     dataArr.forEach((v: number, i: number) => {
+      if (v === -1) return
+
       v = Math.min(v, 50)
       const h = Math.round((drawHeight * v) / maxV)
+
       if (h === 0) return
 
       const x = Math.round(positionTL.x + i * horizonSpan)
       const y = Math.round(positionTL.y + drawHeight * (1 - v / maxV))
       // console.log(x, y, h)
 
-      if (v > 16.67) {
+      if (v > dangerV) {
         if (ctx.fillStyle !== dangerColor && dangerColor) ctx.fillStyle = dangerColor
-      } else if (v > 10) {
+      } else if (v > warningV) {
         if (ctx.fillStyle !== warningColor && warningColor) ctx.fillStyle = warningColor
       } else if (ctx.fillStyle !== goodColor && goodColor) {
         ctx.fillStyle = goodColor
@@ -490,15 +487,7 @@ class Tools {
         1 / (a + b * Math.pow(Math.E, -(x + phi)))
   }
 
-  static installDOT(
-    target: MonsterBase,
-    dotDebuffName: string,
-    duration: number,
-    interval: number,
-    singleAttack: number,
-    isIgnoreArmor: boolean,
-    damageEmitter: (mst: MonsterBase) => void
-  ) {
+  static installDOT(target: MonsterBase, dotDebuffName: string, duration: number, interval: number, singleAttack: number, isIgnoreArmor: boolean, damageEmitter: (mst: MonsterBase) => void) {
     if (typeof (target as unknown as Record<string, boolean>)[dotDebuffName] !== 'boolean') {
       console.log(target)
       throw new Error('target has no debuff mark as name ' + dotDebuffName)
@@ -565,9 +554,7 @@ class Tools {
         if (++dotCount > duration / interval) {
           // 效果结束、结束计时器
 
-          ;(target as unknown as Record<string, string[]>)[dotDebuffName] = (target as unknown as Record<string, string[]>)[dotDebuffName]!.filter(
-            d => d !== thisId
-          )
+          ;(target as unknown as Record<string, string[]>)[dotDebuffName] = (target as unknown as Record<string, string[]>)[dotDebuffName]!.filter(d => d !== thisId)
 
           clearInterval(itv)
           return
@@ -680,7 +667,7 @@ abstract class RectangleBase extends Base {
 /**
  * 所有[可用中心点和半径描述物体]的基类
  */
-abstract class CircleBase extends Base {
+class CircleBase extends Base {
   /**
    * - 物体的位置，不应在任何时候替换实例的 { position }
    * - 如果需要改变位置，使用mutable方法
@@ -688,13 +675,13 @@ abstract class CircleBase extends Base {
   public readonly position!: Position
   public radius: number
   public borderWidth: number
-  public borderStyle: string
+  public borderStyle: Optional<string>
   /**
    * Circle的内切正方形边长
    */
   public readonly inscribedSquareSideLength!: number
 
-  constructor(p: Position, r: number, bw: number, bs: string) {
+  constructor(p: Position, r: number, bw: number, bs: Optional<string>) {
     super()
 
     Tools.ObjectFx.addFinalReadonlyProperty(this, 'position', p)
@@ -717,7 +704,7 @@ abstract class CircleBase extends Base {
 
   protected renderBorder(context: CanvasRenderingContext2D) {
     if (this.borderWidth > 0) {
-      context.strokeStyle = this.borderStyle
+      if (this.borderStyle) context.strokeStyle = this.borderStyle
       context.lineWidth = this.borderWidth
       context.beginPath()
       context.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2, true)
@@ -730,7 +717,7 @@ abstract class CircleBase extends Base {
 /**
  * 所有[单位]的基类
  */
-abstract class ItemBase extends CircleBase {
+class ItemBase extends CircleBase {
   /**
    * - Item的图形描述符，可以是位图、位图的Promise、动画
    * - 如果为 null, 则必须具备 fill 属性用以简单填充
@@ -747,7 +734,7 @@ abstract class ItemBase extends CircleBase {
    */
   public controlable = false
 
-  constructor(position: Position, radius: number, borderWidth: number, borderStyle: string, image: string | ImageBitmap | AnimationSprite) {
+  constructor(position: Position, radius: number, borderWidth: number, borderStyle: Optional<string>, image: string | ImageBitmap | AnimationSprite) {
     super(position, radius, borderWidth, borderStyle)
 
     this.image = null
@@ -926,9 +913,9 @@ abstract class TowerBase extends ItemBase {
 
   private static get GemsToOptionsInnerHtml() {
     return this.Gems.map((gemCtor, idx) => {
-      return `<option value='${gemCtor.name}'${idx === 0 ? ' selected' : ''}${this.deniedGems.includes(gemCtor.name) ? ' disabled' : ''}>${
-        gemCtor.ctor.gemName
-      }${this.deniedGems.includes(gemCtor.name) ? ' - 不能装备到此塔' : ''}</option>`
+      return `<option value='${gemCtor.name}'${idx === 0 ? ' selected' : ''}${this.deniedGems.includes(gemCtor.name) ? ' disabled' : ''}>${gemCtor.ctor.gemName}${
+        this.deniedGems.includes(gemCtor.name) ? ' - 不能装备到此塔' : ''
+      }</option>`
     }).join('')
   }
 
@@ -969,7 +956,7 @@ abstract class TowerBase extends ItemBase {
   public level = 0
   protected rank = 0
 
-  private readonly price: ArrayLike<number>
+  public readonly price: ArrayLike<number>
 
   public levelAtkFx: (lvl: number) => number
   public levelHstFx: (lvl: number) => number
@@ -982,8 +969,8 @@ abstract class TowerBase extends ItemBase {
 
   private lastShootTime: number
 
-  public __kill_count = 0
-  public __total_damage = 0
+  private __inner_total_damage = 0
+  private __inner_kill_count = 0
 
   public gem: Optional<GemBase> = null
   public canInsertGem = true
@@ -1023,7 +1010,7 @@ abstract class TowerBase extends ItemBase {
     position: Position,
     radius: number,
     borderWidth: number,
-    borderStyle: string,
+    borderStyle: Optional<string>,
     image: string | ImageBitmap | AnimationSprite,
     price: ArrayLike<number>,
     levelAtkFx: (lvl: number) => number,
@@ -1217,6 +1204,22 @@ abstract class TowerBase extends ItemBase {
     return '' + (this.level + 1)
   }
 
+  public get __total_damage() {
+    return this.__inner_total_damage
+  }
+
+  public set __total_damage(v: number) {
+    this.__inner_total_damage = v
+  }
+
+  public get __kill_count() {
+    return this.__inner_kill_count
+  }
+
+  public set __kill_count(v: number) {
+    this.__inner_kill_count = v
+  }
+
   /**
    * - 插入 Legendary Gem
    * @param gemCtorName
@@ -1249,14 +1252,7 @@ abstract class TowerBase extends ItemBase {
   produceBullet(_i: number, _monsters: MonsterBase[]) {
     if (this.target) {
       const ratio = this.calculateDamageRatio(this.target)
-      this.bulletCtl.Factory(
-        this.recordDamage.bind(this),
-        this.bulletCtorName,
-        this.position.copy().dithering(this.radius),
-        this.Atk * ratio,
-        this.target,
-        this.bulletImage
-      )
+      this.bulletCtl.Factory(this.recordDamage.bind(this), this.bulletCtorName, this.position.copy().dithering(this.radius), this.Atk * ratio, this.target, this.bulletImage)
     }
   }
 
@@ -1322,7 +1318,7 @@ abstract class TowerBase extends ItemBase {
 
       Game.updateGemPoint += TowerBase.levelUpPointEarnings
 
-      return this.price[this.level]
+      return this.price[this.level]!
     }
   }
 
@@ -1360,10 +1356,10 @@ abstract class TowerBase extends ItemBase {
       const px = this.position.x - this.radius * 0.68
 
       for (let i = 0; i < l2; i++) {
-        context.drawImage(Game.callImageBitMap('p_ruby'), px + 7 * i, py, 8, 8)
+        context.drawImage(Game.callImageBitMap('p_ruby')!, px + 7 * i, py, 8, 8)
       }
       for (let i = 0; i < l1; i++) {
-        context.drawImage(Game.callImageBitMap('star_m'), px + 5 * i + 7 * l2, py, 8, 8)
+        context.drawImage(Game.callImageBitMap('star_m')!, px + 5 * i + 7 * l2, py, 8, 8)
       }
     }
   }
@@ -1371,15 +1367,7 @@ abstract class TowerBase extends ItemBase {
   renderPreparationBar(context: CanvasRenderingContext2D) {
     if (this.canShoot) return
     context.fillStyle = 'rgba(25,25,25,.3)'
-    Tools.renderSector(
-      context,
-      this.position.x,
-      this.position.y,
-      this.radius,
-      0,
-      Math.PI * 2 * (1 - (performance.now() - this.lastShootTime) / this.Hst),
-      false
-    ).fill()
+    Tools.renderSector(context, this.position.x, this.position.y, this.radius, 0, Math.PI * 2 * (1 - (performance.now() - this.lastShootTime) / this.Hst), false).fill()
   }
 
   override render(context: CanvasRenderingContext2D) {
@@ -1407,7 +1395,7 @@ abstract class TowerBase extends ItemBase {
       // debugger
       let jump = 0
       dataChunk.forEach((data, idx) => {
-        const showD = showDesc && (this.constructor as typeof TowerBase).informationDesc.has(data[0])
+        const showD = showDesc && (this.constructor as typeof TowerBase).informationDesc.has(data[0]!)
 
         // if (showD) console.log(data[0], showD, 'index: ' + idx + offset + jump)
 
@@ -1421,8 +1409,8 @@ abstract class TowerBase extends ItemBase {
           Tools.Dom.removeNodeTextAndStyle(row.firstChild as HTMLElement)
         }
 
-        row.firstChild.textContent = data[0]
-        row.lastChild.textContent = data[1]
+        row.firstChild!.textContent = data[0]!
+        row.lastChild!.textContent = data[1]!
 
         // @todo 售价 green red
 
@@ -1438,7 +1426,7 @@ abstract class TowerBase extends ItemBase {
 
         if (data[0] === '售价' || data[0] === '类型') {
           ;(row.lastChild as HTMLElement).style.color = '#606266'
-          renderDataType_dv(rootNode, idx + offset + jump + (showD ? 2 : 1))
+          renderDataType_division(rootNode, idx + offset + jump + (showD ? 2 : 1))
           jump++
         } else if (data[0] === '下一级') {
           if (this.isMaxLevel) (row.lastChild as HTMLElement).style.color = '#DCDFE6'
@@ -1457,7 +1445,7 @@ abstract class TowerBase extends ItemBase {
         row.textContent = data
       })
     }
-    const renderDataType_dv = (rootNode: Node, offset: number) => {
+    const renderDataType_division = (rootNode: Node, offset: number) => {
       const div = rootNode.childNodes.item(offset) as HTMLElement
       Tools.Dom.removeAllChildren(div)
       Tools.Dom.removeNodeTextAndStyle(div, 'division')
@@ -1474,9 +1462,7 @@ abstract class TowerBase extends ItemBase {
     blockElement.style.borderBottom = showGemPanel ? '0' : ''
 
     const lineCount = this.informationSeq.length + this.descriptionChunked.length + this.exploitsSeq.length
-    const moreDescLineCount = showMoreDetail
-      ? this.informationSeq.filter(f => (this.constructor as typeof TowerBase).informationDesc.has(f[0])).length
-      : 0
+    const moreDescLineCount = showMoreDetail ? this.informationSeq.filter(info => (this.constructor as typeof TowerBase).informationDesc.has(info[0]!)).length : 0
     const extraLineCount = 2 + 1 + moreDescLineCount /* inner_division_key.length */
 
     if (blockElement.childNodes.length > lineCount + extraLineCount) {
@@ -1497,11 +1483,11 @@ abstract class TowerBase extends ItemBase {
 
     renderDataType_1(blockElement, this.informationSeq, 0, showMoreDetail)
 
-    renderDataType_dv(blockElement, l1 - 1)
+    renderDataType_division(blockElement, l1 - 1)
 
     renderDataType_1(blockElement, this.exploitsSeq, l1, false)
 
-    renderDataType_dv(blockElement, l2 - 1)
+    renderDataType_division(blockElement, l2 - 1)
 
     renderDataType_2(blockElement, this.descriptionChunked, l2)
     /// render end
@@ -1523,7 +1509,7 @@ abstract class TowerBase extends ItemBase {
 
       // 选择Legendary Gem
       if (!this.gem) {
-        let selected = TowerBase.Gems[0].name
+        let selected = TowerBase.Gems[0]!.name
 
         Tools.Dom.generateRow(gemElement, null, {
           textContent: '选购一颗' + GemBase.gemName,
@@ -1532,13 +1518,7 @@ abstract class TowerBase extends ItemBase {
 
         if (showMoreDetail) {
           Tools.Dom.generateRow(gemElement, null, {
-            textContent:
-              GemBase.gemName +
-              '可以极大得提高塔的能力，每个单位只能选择一枚' +
-              GemBase.gemName +
-              '镶嵌，之后可以使用点数升级继续提高' +
-              GemBase.gemName +
-              '的效用',
+            textContent: GemBase.gemName + '可以极大得提高塔的能力，每个单位只能选择一枚' + GemBase.gemName + '镶嵌，之后可以使用点数升级继续提高' + GemBase.gemName + '的效用',
             style: { margin: '0 0 8px 0', color: '#909399' }
           })
         }
@@ -1553,7 +1533,7 @@ abstract class TowerBase extends ItemBase {
 
           rowDesc.textContent = ctor.stasisDescription
 
-          rowimg.firstChild.src = ctor.imgSrc
+          rowImage.firstChild.src = ctor.imgSrc
 
           rowPrice.lastChild.textContent = '$ ' + Tools.formatterUs.format(ctor.price)
 
@@ -1568,14 +1548,13 @@ abstract class TowerBase extends ItemBase {
         select.innerHTML = (this.constructor as typeof TowerBase).GemsToOptionsInnerHtml
         Tools.Dom.generateRow(gemElement, 'row_nh', { style: { margin: '0 0 8px 0' } }, [select])
 
-        // const rowimg = Tools.Dom.generateRow(gemElement, null, { innerHTML: `<img src='${(eval(selected)).imgSrc}' class='lg_gem_img'></img>` })
-        const rowimg = Tools.Dom.generateRow(gemElement) as HTMLDivElement & {
+        const rowImage = Tools.Dom.generateRow(gemElement) as HTMLDivElement & {
           firstChild: HTMLImageElement
         }
 
         const ctor = TowerBase.GemNameToGemCtor(selected) as unknown as typeof GemBase
 
-        Tools.Dom.generateImg(rowimg, ctor.imgSrc, { className: 'lg_gem_img' })
+        Tools.Dom.generateImg(rowImage, ctor.imgSrc, { className: 'lg_gem_img' })
         const rowPrice = Tools.Dom.generateRow(gemElement, null, { style: { marginBottom: '5px' } }, ctor.priceSpan) as HTMLDivElement & {
           lastChild: HTMLSpanElement
         }
@@ -1603,7 +1582,7 @@ abstract class TowerBase extends ItemBase {
             emitter(-ct.price)
             this.inlayGem(selected)
 
-            this.renderStatusBoard(...arguments)
+            this.renderStatusBoard(bx1, _bx2, by1, _by2, showGemPanel, showMoreDetail, specifiedWidth)
           }
         }
         // if (this.constructor.deniedGems && this.constructor.deniedGems.includes(selected)) {
@@ -1623,16 +1602,21 @@ abstract class TowerBase extends ItemBase {
         btn.type = 'button'
         btn.textContent = '升级'
         btn.title = '长按快速升级'
+
         if (!canUpdateNext) {
           btn.setAttribute('disabled', 'disabled')
         } else {
           btn.removeAttribute('disabled')
         }
-        btn.onclick = () => {
-          Game.updateGemPoint -= this.gem.levelUp(Game.updateGemPoint)
 
-          this.renderStatusBoard(...arguments)
+        btn.onclick = () => {
+          if (this && this.gem) {
+            Game.updateGemPoint -= this.gem.levelUp(Game.updateGemPoint)
+
+            this.renderStatusBoard(bx1, _bx2, by1, _by2, showGemPanel, showMoreDetail, specifiedWidth)
+          }
         }
+
         Tools.Dom.bindLongPressEventHelper(
           this.id + '',
           btn,
@@ -1800,7 +1784,7 @@ abstract class MonsterBase extends ItemBase {
 
   public exploitsSeq: string[][]
 
-  public textScrollBox: HealthChangeHintScrollBox
+  public textScrollBox: Optional<HealthChangeHintScrollBox>
 
   public type = '普通怪物'
 
@@ -1808,7 +1792,7 @@ abstract class MonsterBase extends ItemBase {
     position: Position,
     radius: number,
     borderWidth: number,
-    borderStyle: string,
+    borderStyle: Optional<string>,
     image: string | ImageBitmap | AnimationSprite,
     level: number,
     levelRwdFx: (lvl: number) => number,
@@ -2064,7 +2048,7 @@ abstract class MonsterBase extends ItemBase {
       // 移动
       // console.log('move to', path[0].x, path[0].y)
       // console.log('path.length', path.length)
-      this.position.moveTo(path[0], this.speedValue)
+      this.position.moveTo(path[0]!, this.speedValue)
     }
 
     this.makeEffect(towers, monsters)
@@ -2079,7 +2063,7 @@ abstract class MonsterBase extends ItemBase {
 
     if (this.healthChangeHintQueue.length > 0) {
       this.healthChangeHintQueue.forEach(str => {
-        this.textScrollBox.push(str)
+        this.textScrollBox!.push(str)
       })
 
       this.healthChangeHintQueue.length = 0
@@ -2091,33 +2075,23 @@ abstract class MonsterBase extends ItemBase {
   renderHealthBar(context: CanvasRenderingContext2D) {
     if (this.health <= 0 || this.health / this.maxHealth > 1) return
 
-    const xaxisOffset = this.healthBarWidth < this.radius * 2 ? 0 : this.healthBarWidth / 2 - this.radius
+    const xAxisOffset = this.healthBarWidth < this.radius * 2 ? 0 : this.healthBarWidth / 2 - this.radius
 
     context.strokeStyle = this.healthBarBorderStyle
-    context.strokeRect(
-      this.position.x - this.radius - xaxisOffset,
-      this.position.y + this.inscribedSquareSideLength / 1.5,
-      this.healthBarWidth,
-      this.healthBarHeight
-    )
+    context.strokeRect(this.position.x - this.radius - xAxisOffset, this.position.y + this.inscribedSquareSideLength / 1.5, this.healthBarWidth, this.healthBarHeight)
 
     context.fillStyle = this.healthBarFillStyle
-    context.fillRect(
-      this.position.x - this.radius - xaxisOffset,
-      this.position.y + this.inscribedSquareSideLength / 1.5,
-      (this.healthBarWidth * this.health) / this.maxHealth,
-      this.healthBarHeight
-    )
+    context.fillRect(this.position.x - this.radius - xAxisOffset, this.position.y + this.inscribedSquareSideLength / 1.5, (this.healthBarWidth * this.health) / this.maxHealth, this.healthBarHeight)
 
     if (this.isBoss) {
-      const xaxisOffset = this.healthBarWidth < this.radius * 2 ? 0 : this.healthBarWidth / 2 - this.radius
+      const xAxisOffset = this.healthBarWidth < this.radius * 2 ? 0 : this.healthBarWidth / 2 - this.radius
 
       context.save()
       context.fillStyle = this.healthBarTextFillStyle
       context.font = this.healthBarTextFontStyle
       context.fillText(
         `${Tools.chineseFormatter(this.health, 1)}/${Tools.chineseFormatter(this.maxHealth, 1)}`,
-        this.position.x + this.radius + xaxisOffset + 2,
+        this.position.x + this.radius + xAxisOffset + 2,
         this.position.y + this.inscribedSquareSideLength / 1.5 + 5
       )
       context.restore()
@@ -2165,21 +2139,22 @@ abstract class MonsterBase extends ItemBase {
     if (this.beTransformed) {
       debuffs.push(imgCtl.getImage('buff_transform'))
     }
+
     debuffs.forEach((dbf, idx) => {
-      // if (dbf instanceof Promise) throw new TypeError('ImageBitMap is still a Pormise while rendering debuffs.')
+      // if (dbf instanceof Promise) throw new TypeError('ImageBitMap is still a Promise while rendering debuffs.')
       const x = this.position.x - this.radius + dSize * idx
       const y = this.position.y - this.radius - dSize
 
-      context.drawImage(dbf, x, y, dSize - 1, dSize - 1)
+      context.drawImage(dbf!, x, y, dSize - 1, dSize - 1)
     })
   }
 
-  renderStatusBoard(..._args: any[]) {
-    TowerBase.prototype.renderStatusBoard.call(this, ...arguments, 180)
+  renderStatusBoard(bx1: number, _bx2: number, by1: number, _by2: number, showGemPanel: boolean, showMoreDetail: boolean) {
+    TowerBase.prototype.renderStatusBoard.call(this, bx1, _bx2, by1, _by2, showGemPanel, showMoreDetail, 180)
   }
 
-  render(context: CanvasRenderingContext2D, imgCtl: ImageManger) {
-    const ftmp = context.font
+  override render(context: CanvasRenderingContext2D, imgCtl: ImageManger) {
+    const f_tmp = context.font
 
     super.render(context)
     this.renderHealthBar(context)
@@ -2187,7 +2162,7 @@ abstract class MonsterBase extends ItemBase {
     // this.renderLevel(context)
     this.renderDebuffs(context, imgCtl)
 
-    context.font = ftmp
+    context.font = f_tmp
   }
 }
 
@@ -2196,18 +2171,9 @@ abstract class BulletBase extends ItemBase {
   protected speed: number
   public target: Optional<MonsterBase>
   public fulfilled = false
-  emitter: typeof TowerBase.prototype.recordDamage
+  protected emitter!: typeof TowerBase.prototype.recordDamage
 
-  constructor(
-    position: Position,
-    radius: number,
-    borderWidth: number,
-    borderStyle: string,
-    image: string | ImageBitmap,
-    atk: number,
-    speed: number,
-    target: MonsterBase
-  ) {
+  constructor(position: Position, radius: number, borderWidth: number, borderStyle: Optional<string>, image: string | ImageBitmap, atk: number, speed: number, target: MonsterBase) {
     super(position, radius, borderWidth, borderStyle, image)
 
     // console.log(this)
@@ -2216,11 +2182,13 @@ abstract class BulletBase extends ItemBase {
     this.target = target
   }
 
-  setDamageEmitter(emitter: typeof TowerBase.prototype.recordDamage) {
+  public setDamageEmitter(emitter: typeof TowerBase.prototype.recordDamage) {
     this.emitter = emitter
   }
 
   get isReaching() {
+    if (!this.target) return false
+
     return Position.distancePow2(this.position, this.target.position) < Math.pow(this.target.radius + this.radius, 2)
   }
 
@@ -2230,6 +2198,8 @@ abstract class BulletBase extends ItemBase {
   }
 
   run(monsters: MonsterBase[]) {
+    if (!this.target) return
+
     this.position.moveTo(this.target.position, this.speed)
 
     if (this.target.isDead) {
@@ -2242,23 +2212,25 @@ abstract class BulletBase extends ItemBase {
     } else if (this.position.outOfBoundary(Position.O, Game.callBoundaryPosition(), 50)) {
       console.log('a bullet has run out of the bound, and will be swipe by system.')
       console.log(this)
+
       this.fulfilled = true
       this.target = null
     }
   }
 
-  hit(monster: MonsterBase, magnification: number = 1, _msts?: MonsterBase[]) {
+  hit(monster: MonsterBase, magnification: number = 1, _monsters?: MonsterBase[]) {
     // console.log(...arguments)
     monster.health -= this.Atk * magnification * (1 - monster.armorResistance)
+
     this.emitter(monster)
   }
 
-  renderImage(context: CanvasRenderingContext2D) {
-    if (this.image instanceof AnimationSprite) {
+  override renderImage(context: CanvasRenderingContext2D) {
+    if (!this.image || this.image instanceof AnimationSprite) {
       return
     }
 
-    const transFormed = this.rotateForward(context, this.target.position)
+    const transformed = this.target ? this.rotateForward(context, this.target.position) : { restore: () => {} }
 
     context.drawImage(
       this.image,
@@ -2272,6 +2244,6 @@ abstract class BulletBase extends ItemBase {
       this.inscribedSquareSideLength
     )
 
-    transFormed.restore()
+    transformed.restore()
   }
 }

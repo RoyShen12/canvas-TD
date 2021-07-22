@@ -13,11 +13,13 @@ interface WrappedCanvasFx {
   dom: CanvasEle
 }
 
-type WrappedAllCanvasRenderingContext = Partial<
-  CanvasRenderingContext2D & OffscreenCanvasRenderingContext2D & ImageBitmapRenderingContext & WrappedCanvasFx
->
+// type WrappedAllCanvasRenderingContext = Partial<
+//   CanvasRenderingContext2D & OffscreenCanvasRenderingContext2D & ImageBitmapRenderingContext & WrappedCanvasFx
+// >
 
 type WrappedCanvasRenderingContext = (CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | ImageBitmapRenderingContext) & WrappedCanvasFx
+
+type WrappedCanvasRenderingContextOnScreen2D = CanvasRenderingContext2D & WrappedCanvasFx
 
 type WrappedCanvasRenderingContext2D = (CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D) & WrappedCanvasFx
 
@@ -64,7 +66,7 @@ declare namespace Astar {
 
 interface IocExtras {
   __re_render_text: (p?: number) => void
-  reRender: (width?: number) => void
+  __re_render: (width: number) => void
   __dn: string
   __od: number
   __inner_img_u: string

@@ -10,16 +10,16 @@ class MonsterManager {
   }
 
   public monsters: MonsterBase[] = []
-  private __mctor_cache: Map<string, IMonsterBase> = new Map()
+  private __m_ctor_cache: Map<string, IMonsterBase> = new Map()
 
   Factory(monsterName: string, position: Position, image: string | ImageBitmap | AnimationSprite, level: number, ...extraArgs: any[]): MonsterBase {
-    let ctor: IMonsterBase = null
+    let ctor: Optional<IMonsterBase> = null
 
-    if (this.__mctor_cache.has(monsterName)) {
-      ctor = this.__mctor_cache.get(monsterName)
+    if (this.__m_ctor_cache.has(monsterName)) {
+      ctor = this.__m_ctor_cache.get(monsterName)!
     } else {
-      ctor = eval(monsterName)
-      this.__mctor_cache.set(monsterName, ctor)
+      ctor = eval(monsterName) as IMonsterBase
+      this.__m_ctor_cache.set(monsterName, ctor)
     }
 
     const nm = new ctor(position, image, level, ...extraArgs)
@@ -52,7 +52,7 @@ class MonsterManager {
   }
 
   get maxLevel() {
-    return this.monsters.length > 0 ? _.maxBy(this.monsters, '__inner_level').level : 0
+    return this.monsters.length > 0 ? _.maxBy(this.monsters, '__inner_level')!.level : 0
   }
 }
 
@@ -166,11 +166,11 @@ class HighPriest extends MonsterBase {
     this.description = ''
   }
 
-  get healthBarWidth() {
+  override get healthBarWidth() {
     return this.radius * 2.5
   }
 
-  get healthBarHeight() {
+  override get healthBarHeight() {
     return 4
   }
 
@@ -252,11 +252,11 @@ class Devil extends MonsterBase {
     this.description = ''
   }
 
-  get healthBarWidth() {
+  override get healthBarWidth() {
     return this.radius * 2.5
   }
 
-  get healthBarHeight() {
+  override get healthBarHeight() {
     return 4
   }
 }

@@ -9,18 +9,9 @@ class DamageTextBox {
   private width: number
   private fontStyle: string
 
-  constructor(
-    text: number,
-    pos: Position,
-    width?: number,
-    fontSize?: number,
-    minFontSize?: number,
-    fillStyle?: string,
-    speed?: number,
-    lifeTick?: number
-  ) {
+  constructor(text: number, pos: Position, width: number = 120, fontSize: number, minFontSize: number, fillStyle?: string, speed?: number, lifeTick?: number) {
     this.position = pos
-    this.width = width || 120
+    this.width = width
     this.damage = text
     this.speed = speed || 1.5
     this.maxLife = this.life = lifeTick || 60
@@ -84,18 +75,11 @@ class HealthChangeHintScrollBox extends Base {
   private needMergeItvMs: number
   private life: number
 
-  private lastPush: { time: DOMHighResTimeStamp; box: DamageTextBox }
+  private lastPush: { time: DOMHighResTimeStamp; box: Optional<DamageTextBox> }
 
-  constructor(
-    pos: Position,
-    width: number,
-    fontMax: number,
-    fontMin: number,
-    fill: string,
-    speed: number,
-    life: number /*, transpFunc?: (step: number) => number*/
-  ) {
+  constructor(pos: Position, width: number, fontMax: number, fontMin: number, fill: string, speed: number, life: number /*, transpFunc?: (step: number) => number*/) {
     super()
+
     this.masterPosition = pos
 
     this.width = width
@@ -105,7 +89,7 @@ class HealthChangeHintScrollBox extends Base {
     this.speed = speed
     this.life = life
 
-    this.needMergeItvMs = (fontMax / speed / 60) * 1000 * 0.8
+    this.needMergeItvMs = (fontMax / speed / 14) * 1000
 
     this.lastPush = {
       time: 0,
@@ -123,6 +107,7 @@ class HealthChangeHintScrollBox extends Base {
     const now = performance.now()
 
     if (this.lastPush.box && now - this.lastPush.time < this.needMergeItvMs) {
+      console.log('this.needMergeItvMs', this.needMergeItvMs, dmg)
       this.lastPush.box.damage += dmg
     } else {
       const newBox = new DamageTextBox(dmg, this.masterPosition.copy(), this.width, this.fontMax, this.fontMin, this.fill, this.speed, this.life)
@@ -137,11 +122,11 @@ class HealthChangeHintScrollBox extends Base {
 class AnimationSprite extends Base {
   public frameRepetition: number
   public img: ImageBitmap
-  private xcount: number
-  private ycount: number
+  private xCount: number
+  private yCount: number
   public totalFrame: number
   public nextFrameIndex: number
-  private lastRAF: number
+  private lastRAF: Optional<number>
   public isDead: boolean
 
   /**
@@ -154,8 +139,8 @@ class AnimationSprite extends Base {
 
     this.img = img
 
-    this.xcount = xc
-    this.ycount = yc
+    this.xCount = xc
+    this.yCount = yc
 
     this.totalFrame = xc * yc
     this.nextFrameIndex = 0
@@ -178,7 +163,7 @@ class AnimationSprite extends Base {
    * - 在需要时递归
    * - 通常在外部被调用，动画精灵使用左上角坐标和宽高确定位置，而不是中心点和半径
    * @param endless 是否在帧序列完成后从头开始循环
-   * @param trusteeshipedClearing 是否由上层框架托管每帧前清理工作
+   * @param trusteeShippedClearing 是否由上层框架托管每帧前清理工作
    * @param recirculation 是否递归执行自身完成一次或已上次的帧序列播放，设置为[true]则控制步进等逻辑将由上层框架接管
    * @param callback 动画完成后执行的回调函数
    */
@@ -189,7 +174,7 @@ class AnimationSprite extends Base {
     height: number,
     delay: number,
     endless: boolean,
-    trusteeshipedClearing: boolean,
+    trusteeShippedClearing: boolean,
     recirculation: boolean,
     callback?: CallableFunction
   ) {
@@ -198,7 +183,7 @@ class AnimationSprite extends Base {
         this.nextFrameIndex = 0
       } else {
         setTimeout(() => {
-          if (!trusteeshipedClearing) {
+          if (!trusteeShippedClearing) {
             context.clearRect(positionTL.x, positionTL.y, width, height)
             if (callback instanceof Function) {
               callback()
@@ -209,12 +194,12 @@ class AnimationSprite extends Base {
       }
     }
 
-    const w = this.img.width / this.xcount
-    const h = this.img.height / this.ycount
-    const x = (this.realNextFrameIndex % this.xcount) * w
-    const y = Math.floor(this.realNextFrameIndex / this.xcount) * h
+    const w = this.img.width / this.xCount
+    const h = this.img.height / this.yCount
+    const x = (this.realNextFrameIndex % this.xCount) * w
+    const y = Math.floor(this.realNextFrameIndex / this.xCount) * h
 
-    if (!trusteeshipedClearing) {
+    if (!trusteeShippedClearing) {
       context.clearRect(positionTL.x, positionTL.y, width, height)
     }
 
@@ -224,7 +209,7 @@ class AnimationSprite extends Base {
 
     if (recirculation) {
       this.lastRAF = requestAnimationFrame(() => {
-        this.renderOneFrame(context, positionTL, width, height, delay, endless, trusteeshipedClearing, true)
+        this.renderOneFrame(context, positionTL, width, height, delay, endless, trusteeShippedClearing, true)
       })
     }
   }
@@ -234,7 +219,7 @@ class AnimationSprite extends Base {
    */
   render(context: CanvasRenderingContext2D, positionTL: Position, width: number, height: number, delay = 0, callback?: CallableFunction) {
     if (this.realNextFrameIndex !== 0 || this.realNextFrameIndex !== this.totalFrame) {
-      cancelAnimationFrame(this.lastRAF)
+      if (this.lastRAF) cancelAnimationFrame(this.lastRAF)
     }
 
     this.nextFrameIndex = 0
@@ -245,27 +230,27 @@ class AnimationSprite extends Base {
   }
 
   /**
-   * @param trusteeshipedClearing 是否由上层框架托管每帧前清理工作
+   * @param trusteeShippedClearing 是否由上层框架托管每帧前清理工作
    */
-  renderLoop(context: CanvasRenderingContext2D, positionTL: Position, width: number, height: number, trusteeshipedClearing: boolean = false) {
+  renderLoop(context: CanvasRenderingContext2D, positionTL: Position, width: number, height: number, trusteeShippedClearing: boolean = false) {
     if (this.realNextFrameIndex !== 0 || this.realNextFrameIndex !== this.totalFrame) {
-      cancelAnimationFrame(this.lastRAF)
+      if (this.lastRAF) cancelAnimationFrame(this.lastRAF)
     }
 
     this.nextFrameIndex = 0
 
     this.lastRAF = requestAnimationFrame(() => {
-      this.renderOneFrame(context, positionTL, width, height, 0, true, trusteeshipedClearing, true)
+      this.renderOneFrame(context, positionTL, width, height, 0, true, trusteeShippedClearing, true)
     })
   }
 
   terminateLoop() {
-    cancelAnimationFrame(this.lastRAF)
+    if (this.lastRAF) cancelAnimationFrame(this.lastRAF)
     this.isDead = true
   }
 
-  getClone(frameRepetition: number) {
-    return new AnimationSprite(this.img, this.xcount, this.ycount, frameRepetition)
+  getClone(frameRepetition?: number) {
+    return new AnimationSprite(this.img, this.xCount, this.yCount, frameRepetition)
   }
 }
 
@@ -274,14 +259,14 @@ class HostedAnimationSprite extends Base {
   private waitFrame: number
   public render: (ctx: CanvasRenderingContext2D) => void
 
-  constructor(sp: AnimationSprite, pos: Position, w: number, h: number, delay: number, endless: boolean, waitFrame: number) {
+  constructor(sp: AnimationSprite, pos: Position, w: number, h: number, delay: number = 0, endless: boolean, waitFrame: number = 0) {
     super()
 
     this.sp = sp
-    this.waitFrame = waitFrame || 0
+    this.waitFrame = waitFrame
 
     this.render = function (ctx: CanvasRenderingContext2D) {
-      if (this.waitFrame === 0) this.sp.renderOneFrame(ctx, pos, w, h, delay || 0, endless, true, false)
+      if (this.waitFrame === 0) this.sp.renderOneFrame(ctx, pos, w, h, delay, endless, true, false)
       else this.waitFrame--
     }
   }
@@ -584,11 +569,11 @@ class ImageManger {
     })
   }
 
-  getImage(name: string): ImageBitmap {
+  getImage(name: string) {
     return this.bitmapMapping.get(name)
   }
 
-  getSprite(name: string): AnimationSprite {
+  getSprite(name: string) {
     return this.spriteMapping.get(name)
   }
 }

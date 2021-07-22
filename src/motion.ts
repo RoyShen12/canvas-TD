@@ -146,7 +146,7 @@ class Vector extends Position {
     return new PolarVector(this.length(), Math.atan(this.y / this.x))
   }
 
-  copy() {
+  override copy() {
     return new Vector(this.x, this.y)
   }
 
@@ -176,8 +176,8 @@ class Vector extends Position {
   }
 
   divide(f: number) {
-    const invf = 1 / f
-    return new Vector(this.x * invf, this.y * invf)
+    const invF = 1 / f
+    return new Vector(this.x * invF, this.y * invF)
   }
 
   rotate(angle: number, center: PositionLike = { x: 0, y: 0 }) {

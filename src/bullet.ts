@@ -26,7 +26,7 @@ class BulletManager {
     position: Position,
     atk: number,
     target: MonsterBase | Position,
-    image: ImageBitmap | string,
+    image: Optional<ImageBitmap | string>,
     ...extraArgs: any[]
   ): BulletBase {
     let ctor: Optional<IBulletBase> = null
@@ -100,7 +100,7 @@ class CannonBullet extends BulletBase {
 
   override get isReaching() {
     if (this.aimPosition) return Position.distancePow2(this.position, this.aimPosition) < Math.pow(20 + this.radius, 2)
-    return super.isReaching
+    else return super.isReaching
   }
 
   get burnDotCount() {
@@ -112,7 +112,7 @@ class CannonBullet extends BulletBase {
    */
   override run(monsters: MonsterBase[]) {
     if (!this.target) {
-      this.position.moveTo(this.aimPosition, this.speed)
+      this.position.moveTo(this.aimPosition!, this.speed)
     } else {
       this.position.moveTo(this.target.position, this.speed)
 
@@ -132,37 +132,41 @@ class CannonBullet extends BulletBase {
    * 击中敌人后会引起爆炸
    * 并点燃敌人，造成周期伤害
    */
-  override hit(monster: MonsterBase, _magnification: number = 1, monsters: MonsterBase[]) {
+  override hit(monster: Optional<MonsterBase>, _magnification: number = 1, monsters: MonsterBase[]) {
     if (monster) super.hit(monster, this.ratioCalc(monster))
 
-    const target = this.target ? this.target.position : this.aimPosition
+    const targetPosition = this.target ? this.target.position : this.aimPosition!
 
-    const positionTL = new Position(target.x - this.explosionRadius, target.y - this.explosionRadius)
+    const positionTL = new Position(targetPosition.x - this.explosionRadius, targetPosition.y - this.explosionRadius)
     // render explosion
     Game.callAnimation('explo_3', positionTL, this.explosionRadius * 2, this.explosionRadius * 2, 0.5, 0)
     // make exploding dmg
     monsters.forEach(m => {
-      if (Position.distancePow2(m.position, target) < this.explosionRadius * this.explosionRadius) {
+      if (Position.distancePow2(m.position, targetPosition) < this.explosionRadius * this.explosionRadius) {
         m.health -= this.explosionDmg * (1 - m.armorResistance) * this.ratioCalc(m)
         this.emitter(m)
 
-        Tools.installDOT(
-          m,
-          'beBurned',
-          this.burnDotDuration,
-          this.burnDotInterval,
-          this.burnDotDamage * this.ratioCalc(m),
-          false,
-          this.emitter.bind(this)
-        )
+        Tools.installDOT(m, 'beBurned', this.burnDotDuration, this.burnDotInterval, this.burnDotDamage * this.ratioCalc(m), false, this.emitter.bind(this))
       }
     })
   }
 }
 
 class ClusterBomb extends CannonBullet {
-  constructor(...args: any) {
-    super(...args)
+  constructor(
+    position: Position,
+    atk: number,
+    target: MonsterBase,
+    _b_img: null,
+    explosionDmg: number,
+    explosionRadius: number,
+    burnDotDamage: number,
+    burnDotInterval: number,
+    burnDotDuration: number,
+    extraBV: number | null,
+    ratioCalc: (monster: MonsterBase) => number
+  ) {
+    super(position, atk, target, _b_img, explosionDmg, explosionRadius, burnDotDamage, burnDotInterval, burnDotDuration, extraBV, ratioCalc)
 
     this.radius += 4
     this.borderStyle = 'rgba(14,244,11,.9)'
@@ -198,15 +202,7 @@ class ClusterBomb extends CannonBullet {
         .forEach(() => {
           m.health -= dmg * (1 - m.armorResistance) * this.ratioCalc(m)
           this.emitter(m)
-          Tools.installDOT(
-            m,
-            'beBurned',
-            this.burnDotDuration,
-            this.burnDotInterval,
-            this.burnDotDamage * this.ratioCalc(m),
-            false,
-            this.emitter.bind(this)
-          )
+          Tools.installDOT(m, 'beBurned', this.burnDotDuration, this.burnDotInterval, this.burnDotDamage * this.ratioCalc(m), false, this.emitter.bind(this))
         })
     })
   }
@@ -214,7 +210,7 @@ class ClusterBomb extends CannonBullet {
   /**
    * 集束炸弹命中或到达目的地后会爆炸，分裂出[n]枚小型炸弹
    */
-  hit(monster: MonsterBase, _magnification: number = 1, monsters: MonsterBase[]) {
+  override hit(monster: MonsterBase, _magnification: number = 1, monsters: MonsterBase[]) {
     if (monster) super.hit(monster, _magnification, monsters)
 
     this.clusterExplode(monsters, this.childExplodeRadius, this.childBombDistance, this.childExplodeDamage, 45, 10)
@@ -222,8 +218,20 @@ class ClusterBomb extends CannonBullet {
 }
 
 class ClusterBombEx extends ClusterBomb {
-  constructor(...args: any) {
-    super(...args)
+  constructor(
+    position: Position,
+    atk: number,
+    target: MonsterBase,
+    _b_img: null,
+    explosionDmg: number,
+    explosionRadius: number,
+    burnDotDamage: number,
+    burnDotInterval: number,
+    burnDotDuration: number,
+    extraBV: number | null,
+    ratioCalc: (monster: MonsterBase) => number
+  ) {
+    super(position, atk, target, _b_img, explosionDmg, explosionRadius, burnDotDamage, burnDotInterval, burnDotDuration, extraBV, ratioCalc)
 
     this.radius += 2
     this.fill = 'rgba(245,242,11,.8)'
@@ -304,81 +312,81 @@ class NormalArrow extends BulletBase {
   }
 }
 
-class PenetratingArrow extends BulletBase {
-  static bulletVelocity = 12
+// class PenetratingArrow extends BulletBase {
+//   static bulletVelocity = 12
 
-  private destination: Position
-  private hitMap: number[] = []
+//   private destination: Position
+//   private hitMap: number[] = []
 
-  constructor(position: Position, atk: number, target: MonsterBase, image: string | ImageBitmap) {
-    super(position, 8, 0, null, image, atk, NormalArrow.bulletVelocity, target)
+//   constructor(position: Position, atk: number, target: MonsterBase, image: string | ImageBitmap) {
+//     super(position, 8, 0, null, image, atk, NormalArrow.bulletVelocity, target)
 
-    this.destination = this.position.copy().moveTo(this.target.position, Game.callDiagonalLength())
-  }
+//     this.destination = this.position.copy().moveTo(this.target.position, Game.callDiagonalLength())
+//   }
 
-  override run(monsters: MonsterBase[]) {
-    this.position.moveTo(this.destination, this.speed)
+//   override run(monsters: MonsterBase[]) {
+//     this.position.moveTo(this.destination, this.speed)
 
-    monsters.forEach(mst => {
-      if (this.inRange(mst) && !this.hitMap.includes(mst.id)) {
-        this.hit(mst)
-        this.hitMap.push(mst.id)
-      }
-    })
+//     monsters.forEach(mst => {
+//       if (this.inRange(mst) && !this.hitMap.includes(mst.id)) {
+//         this.hit(mst)
+//         this.hitMap.push(mst.id)
+//       }
+//     })
 
-    if (this.position.outOfBoundary(Position.O, Game.callBoundaryPosition(), 50)) {
-      this.fulfilled = true
-      this.target = null
-    }
-  }
+//     if (this.position.outOfBoundary(Position.O, Game.callBoundaryPosition(), 50)) {
+//       this.fulfilled = true
+//       this.target = null
+//     }
+//   }
 
-  override hit(monster: MonsterBase) {
-    // 穿甲
-    monster.health -= this.Atk * (1 - monster.armorResistance * 0.4)
-    this.emitter(monster)
-  }
-}
+//   override hit(monster: MonsterBase) {
+//     // 穿甲
+//     monster.health -= this.Atk * (1 - monster.armorResistance * 0.4)
+//     this.emitter(monster)
+//   }
+// }
 
-class MysticBomb extends BulletBase {
-  static bulletVelocity = 12
+// class MysticBomb extends BulletBase {
+//   static bulletVelocity = 12
 
-  private destination: Position
-  /**
-   * Distance To Destination
-   */
-  private DTD = Infinity
+//   private destination: Position
+//   /**
+//    * Distance To Destination
+//    */
+//   private DTD = Infinity
 
-  constructor(position: Position, atk: number, des: Position) {
-    super(position, 3, 1, 'rgba(141,123,51,1)', 'rgba(204,204,204,1)', atk, MysticBomb.bulletVelocity, null)
+//   constructor(position: Position, atk: number, des: Position) {
+//     super(position, 3, 1, 'rgba(141,123,51,1)', 'rgba(204,204,204,1)', atk, MysticBomb.bulletVelocity, null)
 
-    this.destination = des
-  }
+//     this.destination = des
+//   }
 
-  override get isReaching() {
-    const disP2 = Position.distancePow2(this.position, this.destination)
-    if (disP2 > this.DTD) {
-      return true
-    } else {
-      this.DTD = disP2
-      return false
-    }
-  }
+//   override get isReaching() {
+//     const disP2 = Position.distancePow2(this.position, this.destination)
+//     if (disP2 > this.DTD) {
+//       return true
+//     } else {
+//       this.DTD = disP2
+//       return false
+//     }
+//   }
 
-  override run(monsters: MonsterBase[]) {
-    this.position.moveTo(this.destination, this.speed)
+//   override run(monsters: MonsterBase[]) {
+//     this.position.moveTo(this.destination, this.speed)
 
-    // 没有击中任何目标 -> 消散
-    if (this.isReaching) {
-      this.fulfilled = true
-    } else {
-      const anyHit = monsters.find(mst => this.inRange(mst))
-      if (anyHit) {
-        this.hit(anyHit)
-        this.fulfilled = true
-      }
-    }
-  }
-}
+//     // 没有击中任何目标 -> 消散
+//     if (this.isReaching) {
+//       this.fulfilled = true
+//     } else {
+//       const anyHit = monsters.find(mst => this.inRange(mst))
+//       if (anyHit) {
+//         this.hit(anyHit)
+//         this.fulfilled = true
+//       }
+//     }
+//   }
+// }
 
 class PoisonCan extends BulletBase {
   static bulletVelocity = 6
@@ -387,16 +395,7 @@ class PoisonCan extends BulletBase {
   private poisonItv: number
   private poisonDur: number
 
-  constructor(
-    position: Position,
-    atk: number,
-    target: MonsterBase,
-    _image: null,
-    poisonAtk: number,
-    poisonItv: number,
-    poisonDur: number,
-    extraBV: number | null
-  ) {
+  constructor(position: Position, atk: number, target: MonsterBase, _image: null, poisonAtk: number, poisonItv: number, poisonDur: number, extraBV: number | null) {
     super(position, 2, 1, 'rgba(244,22,33,1)', 'rgba(227,14,233,.9)', atk, PoisonCan.bulletVelocity + (extraBV || 0), target)
 
     this.poisonAtk = poisonAtk
@@ -425,6 +424,8 @@ class Blade extends BulletBase {
   }
 
   override run(monsters: MonsterBase[]) {
+    if (!this.target) return
+
     this.position.moveTo(this.target.position, this.speed)
 
     if (this.target.isDead) {

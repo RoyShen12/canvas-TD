@@ -5,8 +5,9 @@ class CanvasManager {
   public canvasContextMapping: Map<string, WrappedCanvasRenderingContext> = new Map()
   public offscreenCanvasMapping: Map<string, CanvasEle> = new Map()
 
-  getContext(id: string): WrappedAllCanvasRenderingContext {
-    return this.canvasContextMapping.get(id) as WrappedAllCanvasRenderingContext
+  getContext(id: string) {
+    if (this.canvasContextMapping.has(id)) return this.canvasContextMapping.get(id)!
+    else throw new Error('cannot get canvasContext as id ' + id)
   }
 
   /**
@@ -98,7 +99,7 @@ class CanvasManager {
         if ('OffscreenCanvas' in window) {
           // 此处使用了非常激进的 ImageBitmapRenderingContext + transferToImageBitmap + transferFromImageBitmap 的API
           // 仅支持 chrome >= 66, firefox >= 52
-          ctx = canvasEle.getContext('bitmaprenderer') as unknown as WrappedCanvasRenderingContextBitmap
+          ctx = canvasEle.getContext('bitmaprenderer') as WrappedCanvasRenderingContextBitmap
 
           const osc = this.offscreenCanvasMapping.get(paintingOffScreenRenderingContextId) as OffscreenCanvas
 
@@ -142,7 +143,7 @@ class CanvasManager {
 
   refreshText(
     text: string,
-    context: CanvasRenderingContext2D,
+    context: Optional<CanvasRenderingContext2D>,
     positionTL: Position,
     outerBoxPositionTL: Position,
     width: number,
