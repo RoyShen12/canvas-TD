@@ -854,7 +854,7 @@ abstract class TowerBase extends ItemBase {
     ['DPS', '估计的每秒伤害']
   ])
 
-  private static Gems: { name: string; ctor: IGemBase & typeof GemBase }[] = [
+  private static Gems = [
     {
       ctor: PainEnhancer,
       name: 'PainEnhancer'
