@@ -806,10 +806,10 @@ class ItemBase extends CircleBase {
    * - 此方法使物体的图形旋转并返回一个恢复句柄
    * - 推导过程
    * - <r, θ> --> <1, 0>.rotate(θ).multiply(r)
-   * - <x, y>.r(θ) = <xcos(θ) - ysin(θ), xsin(θ) + ycos(θ)>
-   * - <r, θ> --> <rcos(θ), rsin(θ)>
-   * - <x, y> --> <rcos(θ), rsin(θ)>
-   * - rcos(θ) = x, rsin(θ) = y, tan(θ) = y/x => θ = arctan(y/x), r = x/cos(arctan(y/x))
+   * - <x, y>.r(θ) = <x cos(θ) - y sin(θ), x sin(θ) + y cos(θ)>
+   * - <r, θ> --> <r cos(θ), r sin(θ)>
+   * - <x, y> --> <r cos(θ), r sin(θ)>
+   * - r cos(θ) = x, r sin(θ) = y, tan(θ) = y/x => θ = arctan(y/x), r = x/cos(arctan(y/x))
    * - <x, y> --> <x/cos(arctan(y/x)), arctan(y/x)>
    */
   protected rotateForward(context: CanvasRenderingContext2D, targetPos: Position) {
