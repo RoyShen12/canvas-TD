@@ -5677,7 +5677,8 @@ async function run() {
         console.timeEnd('load images');
         document.body.removeChild(mask);
         const gridSizeBase = 4;
-        const game = new Game(imageCtrl, gridSizeBase * 8, gridSizeBase * 4);
+        const gridYSize = 4;
+        const game = new Game(imageCtrl, gridSizeBase * (gridYSize * (Math.round(innerWidth / innerHeight) - 0.5)), gridSizeBase * gridYSize);
         game.init().run();
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {

@@ -103,7 +103,7 @@ class Game extends Base {
    */
   static IOC(
     itm: IocItem,
-    ctor: typeof towerCtors[0],
+    ctor: (typeof towerCtors)[0],
     _ctx: CanvasRenderingContext2D,
     _txt_fx: (text: string, bx: number, by: number, maxWidth: number, color: string, fSize: number) => void,
     centerX: number,
@@ -1428,8 +1428,9 @@ async function run() {
     document.body.removeChild(mask)
 
     const gridSizeBase = 4
+    const gridYSize = 4
 
-    const game = new Game(imageCtrl, gridSizeBase * 8, gridSizeBase * 4)
+    const game = new Game(imageCtrl, gridSizeBase * (gridYSize * (Math.round(innerWidth / innerHeight) - 0.5)), gridSizeBase * gridYSize)
     game.init().run()
 
     document.addEventListener(
