@@ -322,8 +322,11 @@ class GameEventHandler {
       const index = +e.key - 1
       if (index >= 0 && index < towerForSelect.length) {
         this._selectedTowerTypeToBuild = towerForSelect[index] ?? null
-        onLeftClick()
-        this._selectedTowerTypeToBuild = null
+        try {
+          onLeftClick()
+        } finally {
+          this._selectedTowerTypeToBuild = null
+        }
       }
       return
     }

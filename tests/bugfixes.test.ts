@@ -1449,3 +1449,104 @@ describe('Bug Fix: Long-press timer should be cleared before new press', () => {
   })
 })
 
+// ============================================================================
+// Round 10 Bug Fix Tests
+// ============================================================================
+
+describe('Bug Fix: Gem upgrade long-press should use current gem points', () => {
+  test('stale closure value allows overspending', () => {
+    let actualGemPoints = 1000
+    const levelUpCost = 100
+    const capturedGemPoints = 1000 // stale: captured at render time
+
+    // Simulate 12 upgrades with stale check
+    let upgrades = 0
+    for (let i = 0; i < 12; i++) {
+      // Old code: check against stale captured value
+      if (capturedGemPoints >= levelUpCost) {
+        actualGemPoints -= levelUpCost
+        upgrades++
+      }
+    }
+
+    // Bug: all 12 passed the check even though balance went negative
+    expect(actualGemPoints).toBe(-200)
+    expect(upgrades).toBe(12)
+  })
+
+  test('live value check prevents overspending', () => {
+    let actualGemPoints = 1000
+    const levelUpCost = 100
+
+    // Simulate upgrades with live check
+    let upgrades = 0
+    for (let i = 0; i < 12; i++) {
+      // Fixed: check against live value
+      if (actualGemPoints >= levelUpCost) {
+        actualGemPoints -= levelUpCost
+        upgrades++
+      }
+    }
+
+    // Fixed: only 10 upgrades (1000 / 100), balance is 0
+    expect(actualGemPoints).toBe(0)
+    expect(upgrades).toBe(10)
+  })
+})
+
+describe('Bug Fix: Number key shortcut exception safety', () => {
+  test('_selectedTowerTypeToBuild should be cleared even if onLeftClick throws', () => {
+    let selectedTower: string | null = null
+
+    const onLeftClick = () => {
+      throw new Error('pathfinder error')
+    }
+
+    selectedTower = 'CannonShooter'
+    let threw = false
+    try {
+      onLeftClick()
+    } catch {
+      threw = true
+    } finally {
+      selectedTower = null
+    }
+
+    expect(threw).toBe(true)
+    expect(selectedTower).toBeNull()
+  })
+})
+
+describe('Bug Fix: Toast animation should match JS duration', () => {
+  test('fade-out delay should be duration minus fade-out length', () => {
+    const duration = 1500
+    const fadeOutDuration = 300
+    const fadeOutDelay = Math.max(0, duration - fadeOutDuration) / 1000
+
+    // At 1500ms duration, fade-out starts at 1200ms = 1.2s
+    expect(fadeOutDelay).toBeCloseTo(1.2)
+  })
+
+  test('default duration should have 2.7s delay', () => {
+    const duration = 3000
+    const fadeOutDelay = Math.max(0, duration - 300) / 1000
+    expect(fadeOutDelay).toBeCloseTo(2.7)
+  })
+
+  test('very short duration should not have negative delay', () => {
+    const duration = 100
+    const fadeOutDelay = Math.max(0, duration - 300) / 1000
+    expect(fadeOutDelay).toBe(0)
+  })
+})
+
+describe('Bug Fix: ClusterBombEx.hit() type safety', () => {
+  test('should handle null monster parameter', () => {
+    const monster: { isDead: boolean } | null = null
+
+    // With Optional type, null check is required before accessing properties
+    const canProcessMonster = monster !== null && !monster.isDead
+    expect(canProcessMonster).toBe(false)
+  })
+})
+

@@ -391,8 +391,9 @@ class StatusBoardRenderer {
 
     btn.onclick = () => {
       if (data.gem) {
-        setUpdateGemPoint(-data.gem.levelUp(updateGemPoint))
-        this.render(data, bx1, by1, true, showMoreDetail, specifiedWidth, getElement, getMoney, updateGemPoint, setUpdateGemPoint)
+        const currentGemPoint = Game.updateGemPoint
+        setUpdateGemPoint(-data.gem.levelUp(currentGemPoint))
+        this.render(data, bx1, by1, true, showMoreDetail, specifiedWidth, getElement, getMoney, Game.updateGemPoint, setUpdateGemPoint)
       }
     }
 
@@ -400,7 +401,7 @@ class StatusBoardRenderer {
       data.id + '',
       btn,
       () => {
-        if (data.gem && !data.gem.isMaxLevel && updateGemPoint >= data.gem.levelUpPoint) {
+        if (data.gem && !data.gem.isMaxLevel && Game.updateGemPoint >= data.gem.levelUpPoint) {
           btn.onclick && btn.onclick(new MouseEvent(''))
           return false
         } else {

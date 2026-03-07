@@ -380,7 +380,7 @@ class ClusterBombEx extends ClusterBomb {
   /**
    * 增强集束炸弹命中后会进行两次分裂
    */
-  override hit(monster: MonsterBase, _magnification: number = 1, monsters: MonsterBase[]): void {
+  override hit(monster: Optional<MonsterBase>, _magnification: number = 1, monsters: MonsterBase[]): void {
     super.hit(monster, _magnification, monsters)
 
     // 二次分裂：更多、更小的子弹药

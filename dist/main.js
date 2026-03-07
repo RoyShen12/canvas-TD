@@ -1182,12 +1182,13 @@ class StatusBoardRenderer {
         }
         btn.onclick = () => {
             if (data.gem) {
-                setUpdateGemPoint(-data.gem.levelUp(updateGemPoint));
-                this.render(data, bx1, by1, true, showMoreDetail, specifiedWidth, getElement, getMoney, updateGemPoint, setUpdateGemPoint);
+                const currentGemPoint = Game.updateGemPoint;
+                setUpdateGemPoint(-data.gem.levelUp(currentGemPoint));
+                this.render(data, bx1, by1, true, showMoreDetail, specifiedWidth, getElement, getMoney, Game.updateGemPoint, setUpdateGemPoint);
             }
         };
         DomUtils.bindLongPressEventHelper(data.id + '', btn, () => {
-            if (data.gem && !data.gem.isMaxLevel && updateGemPoint >= data.gem.levelUpPoint) {
+            if (data.gem && !data.gem.isMaxLevel && Game.updateGemPoint >= data.gem.levelUpPoint) {
                 btn.onclick && btn.onclick(new MouseEvent(''));
                 return false;
             }
@@ -7580,8 +7581,12 @@ class GameEventHandler {
             const index = +e.key - 1;
             if (index >= 0 && index < towerForSelect.length) {
                 this._selectedTowerTypeToBuild = towerForSelect[index] ?? null;
-                onLeftClick();
-                this._selectedTowerTypeToBuild = null;
+                try {
+                    onLeftClick();
+                }
+                finally {
+                    this._selectedTowerTypeToBuild = null;
+                }
             }
             return;
         }
@@ -7888,6 +7893,9 @@ class GameUIManager {
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
         toast.textContent = message;
+        const fadeOutDelay = Math.max(0, duration - 300) / 1000;
+        toast.style.animation = `toast-in 0.3s ease, toast-out 0.3s ease ${fadeOutDelay}s`;
+        toast.style.animationFillMode = 'forwards';
         container.appendChild(toast);
         setTimeout(() => {
             if (toast.parentNode) {

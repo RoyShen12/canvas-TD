@@ -284,6 +284,12 @@ class GameUIManager {
     const toast = document.createElement('div')
     toast.className = `toast toast-${type}`
     toast.textContent = message
+
+    // 动态设置动画时长以匹配 duration 参数
+    const fadeOutDelay = Math.max(0, duration - 300) / 1000
+    toast.style.animation = `toast-in 0.3s ease, toast-out 0.3s ease ${fadeOutDelay}s`
+    toast.style.animationFillMode = 'forwards'
+
     container.appendChild(toast)
 
     setTimeout(() => {
