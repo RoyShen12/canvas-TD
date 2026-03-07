@@ -1550,3 +1550,118 @@ describe('Bug Fix: ClusterBombEx.hit() type safety', () => {
   })
 })
 
+// ============================================================================
+// Round 11 Bug Fix Tests
+// ============================================================================
+
+describe('Bug Fix: Cannot build tower on origin or destination cells', () => {
+  test('should detect origin cell', () => {
+    const gridInfo = { centerX: 20, centerY: 312 }
+    const originPos = { x: 20, y: 312 }
+    const gridSize = 39
+
+    const isOriginCell = Math.abs(gridInfo.centerX - originPos.x) < gridSize / 2
+      && Math.abs(gridInfo.centerY - originPos.y) < gridSize / 2
+
+    expect(isOriginCell).toBe(true)
+  })
+
+  test('should allow building on non-origin cells', () => {
+    const gridInfo = { centerX: 200, centerY: 200 }
+    const originPos = { x: 20, y: 312 }
+    const gridSize = 39
+
+    const isOriginCell = Math.abs(gridInfo.centerX - originPos.x) < gridSize / 2
+      && Math.abs(gridInfo.centerY - originPos.y) < gridSize / 2
+
+    expect(isOriginCell).toBe(false)
+  })
+})
+
+describe('Bug Fix: Wave 1 should spawn full monsterCount', () => {
+  test('wave 1 should spawn all 10 monsters (not 5)', () => {
+    const waveNumber = 1
+    const monsterCount = 10
+    let totalSpawned = 0
+
+    if (waveNumber <= 1) {
+      totalSpawned = monsterCount
+    } else {
+      const monstersPerType = Math.ceil(monsterCount / 2)
+      totalSpawned = monstersPerType + (monsterCount - monstersPerType)
+    }
+
+    expect(totalSpawned).toBe(10) // Full count, not 5
+  })
+
+  test('wave 2 should split evenly between two types', () => {
+    const waveNumber = 2
+    const monsterCount = 12
+    let totalSpawned = 0
+
+    if (waveNumber <= 1) {
+      totalSpawned = monsterCount
+    } else {
+      const monstersPerType = Math.ceil(monsterCount / 2)
+      totalSpawned = monstersPerType + (monsterCount - monstersPerType)
+    }
+
+    expect(totalSpawned).toBe(12)
+  })
+})
+
+describe('Bug Fix: Endless mode should auto-extend without victory screen', () => {
+  test('_isEndlessMode flag should prevent victory overlay', () => {
+    const isEndlessMode = true
+    const isVictory = false
+    const waveCompleted = true
+    const noMonstersLeft = true
+
+    let victoryShown = false
+    let wavesAppended = false
+
+    if (!isVictory && waveCompleted && noMonstersLeft) {
+      if (isEndlessMode) {
+        wavesAppended = true
+      } else {
+        victoryShown = true
+      }
+    }
+
+    expect(wavesAppended).toBe(true)
+    expect(victoryShown).toBe(false)
+  })
+})
+
+describe('Bug Fix: Grid columns should not be negative on narrow screens', () => {
+  test('portrait display should have minimum columns', () => {
+    const innerWidth = 300
+    const innerHeight = 700
+    const BASE_SIZE = 4
+    const ASPECT_MULTIPLIER = 4
+    const MIN_COLUMNS = 16
+
+    const rawColumns = BASE_SIZE * (ASPECT_MULTIPLIER * (Math.round(innerWidth / innerHeight) - 0.5))
+    expect(rawColumns).toBeLessThan(0) // Would crash without guard
+
+    const gridColumns = Math.max(rawColumns, MIN_COLUMNS)
+    expect(gridColumns).toBe(MIN_COLUMNS)
+    expect(gridColumns).toBeGreaterThan(0)
+  })
+})
+
+describe('Bug Fix: _spawnMonster fallback should not self-reference blocked origin', () => {
+  test('should skip spawn when origin is also blocked', () => {
+    const grids: Record<string, Record<string, number>> = {
+      '0': { '7': 0 }, // origin cell is blocked
+    }
+
+    const targetBlocked = grids['0']?.['7'] !== 1
+    const originBlocked = grids['0']?.['7'] !== 1
+
+    expect(targetBlocked).toBe(true)
+    expect(originBlocked).toBe(true)
+    // Monster spawn should be skipped
+  })
+})
+

@@ -248,6 +248,9 @@ class Game extends Base {
   /** 游戏是否胜利 */
   private _isVictory = false
 
+  /** 是否处于无尽模式 */
+  private _isEndlessMode = false
+
   /** 围墙边界数组 */
   private readonly _wallBoundary: number[][]
 
@@ -810,8 +813,15 @@ class Game extends Base {
     if (gridInfo) {
       const isWalkable = this._grids[gridInfo.gridX]?.[gridInfo.gridY] === 1
       if (!isWalkable) {
-        // 生成位置不可通行（例如有塔），回退到起点位置
-        pos = this._originPosition.copy()
+        // 生成位置不可通行，尝试回退到起点
+        const originGridInfo = this._pathfinder.getGridInfoAtPosition(this._originPosition, Infinity)
+        if (originGridInfo && this._grids[originGridInfo.gridX]?.[originGridInfo.gridY] === 1) {
+          pos = this._originPosition.copy()
+        } else {
+          // 起点也不可通行，跳过生成
+          console.warn(`[Game] Cannot spawn monster: both target and origin positions are blocked`)
+          return
+        }
       }
     }
 
@@ -871,6 +881,7 @@ class Game extends Base {
    */
   private _startEndlessMode(): void {
     this._isVictory = false
+    this._isEndlessMode = true
     GameUIManager.hideAllOverlays()
 
     const waveManager = WaveManager.getInstance()
@@ -1079,18 +1090,30 @@ class Game extends Base {
     if (!this._isVictory && !this._isGameOver && !this._isDummyTestMode) {
       const wm = WaveManager.getInstance()
       if (wm.getState() === WaveState.COMPLETED && this._monsterManager.monsters.length === 0) {
-        this._isVictory = true
-        this.isPausing = true
-        GameUIManager.showVictoryOverlay(
-          {
-            totalDamage: this._towerManager.totalDamage,
-            totalKill: this._towerManager.totalKill,
-            survivalTime: this._bornStamp ? performance.now() - this._bornStamp : 0,
-            lifeRemaining: this._life
-          },
-          () => this._startEndlessMode(),
-          () => window.location.reload()
-        )
+        if (this._isEndlessMode) {
+          // 无尽模式：自动追加更多波次
+          const startWave = wm.getTotalWaves() + 1
+          const endlessWaves: Wave[] = []
+          for (let i = 0; i < 10; i++) {
+            const def = WaveFactory.createEndlessWaveDefinition(startWave + i)
+            endlessWaves.push(WaveFactory.createWave(def))
+          }
+          wm.appendWaves(endlessWaves)
+          this._waveUIManager?.updateTotalWaves(wm.getTotalWaves())
+        } else {
+          this._isVictory = true
+          this.isPausing = true
+          GameUIManager.showVictoryOverlay(
+            {
+              totalDamage: this._towerManager.totalDamage,
+              totalKill: this._towerManager.totalKill,
+              survivalTime: this._bornStamp ? performance.now() - this._bornStamp : 0,
+              lifeRemaining: this._life
+            },
+            () => this._startEndlessMode(),
+            () => window.location.reload()
+          )
+        }
       }
     }
 
@@ -1222,7 +1245,9 @@ async function run(): Promise<void> {
     const gridSizeBase = GRID_CONFIG.BASE_SIZE
     const gridYSize = GRID_CONFIG.ASPECT_MULTIPLIER
 
-    const game = new Game(imageCtrl, gridSizeBase * (gridYSize * (Math.round(innerWidth / innerHeight) - 0.5)), gridSizeBase * gridYSize)
+    const rawColumns = gridSizeBase * (gridYSize * (Math.round(innerWidth / innerHeight) - 0.5))
+    const gridColumns = Math.max(rawColumns, GRID_CONFIG.MIN_COLUMNS ?? 16)
+    const game = new Game(imageCtrl, gridColumns, gridSizeBase * gridYSize)
     game.init().run()
 
     document.addEventListener(

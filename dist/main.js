@@ -14,15 +14,10 @@ const GAME_CONFIG = {
     INITIAL_LIFE: 20,
     TEST_MODE_LIFE: 8e4,
     TARGET_FPS: 60,
-    RENDER_UPDATE_TICK: 3,
-    GEM_UPDATE_TICK: 5,
-    LIFE_UPDATE_TICK: 61,
     DOT_CLEANUP_INTERVAL: 60000,
     UI_REFRESH_INTERVAL: 50,
     TOWER_PRICE_GROWTH_RATE: 1.1,
     MAX_TOWER_LEVEL: 180,
-    MOUSE_MOVE_THROTTLE: 34,
-    DOUBLE_CLICK_INTERVAL: 300,
     LONG_PRESS_DURATION: 300,
     LONG_PRESS_INTERVAL: 100,
     LEVEL_UP_ANIMATION_SPEED: 3,
@@ -90,6 +85,7 @@ const GRID_CONFIG = {
     DEFAULT_ROWS: 24,
     BASE_SIZE: 4,
     ASPECT_MULTIPLIER: 4,
+    MIN_COLUMNS: 16,
 };
 const CANVAS_Z_INDEX = {
     BACKGROUND: '-3',
@@ -6889,16 +6885,24 @@ class WaveFactory {
             };
         }
         else {
-            const monstersPerType = Math.ceil(monsterCount / 2);
             const type1 = this.NORMAL_MONSTERS[(waveNumber - 1) % this.NORMAL_MONSTERS.length];
             const type2 = this.NORMAL_MONSTERS[waveNumber % this.NORMAL_MONSTERS.length];
-            summons.push({
-                monsterName: type1,
-                count: monstersPerType,
-                level: level,
-                spawnInterval: WAVE_CONFIG.DEFAULT_SPAWN_INTERVAL
-            });
-            if (waveNumber > 1) {
+            if (waveNumber <= 1) {
+                summons.push({
+                    monsterName: type1,
+                    count: monsterCount,
+                    level: level,
+                    spawnInterval: WAVE_CONFIG.DEFAULT_SPAWN_INTERVAL
+                });
+            }
+            else {
+                const monstersPerType = Math.ceil(monsterCount / 2);
+                summons.push({
+                    monsterName: type1,
+                    count: monstersPerType,
+                    level: level,
+                    spawnInterval: WAVE_CONFIG.DEFAULT_SPAWN_INTERVAL
+                });
                 summons.push({
                     monsterName: type2,
                     count: monsterCount - monstersPerType,
@@ -7653,6 +7657,16 @@ class GameEventHandler {
             GameUIManager.showToast('无法建造：会阻断怪物路径', 'error');
             return;
         }
+        const originPos = Game.callOriginPosition();
+        const destPos = Game.callDestinationPosition();
+        if (originPos && destPos) {
+            const isOriginCell = Math.abs(gridInfo.centerX - originPos.x) < gridSize / 2 && Math.abs(gridInfo.centerY - originPos.y) < gridSize / 2;
+            const isDestCell = Math.abs(gridInfo.centerX - destPos.x) < gridSize / 2 && Math.abs(gridInfo.centerY - destPos.y) < gridSize / 2;
+            if (isOriginCell || isDestCell) {
+                GameUIManager.showToast('无法建造：不能在起点或终点建塔', 'warning');
+                return;
+            }
+        }
         if (money < this._selectedTowerTypeToBuild.__init_price[0]) {
             GameUIManager.showToast('金币不足', 'warning');
             return;
@@ -8112,6 +8126,7 @@ class Game extends Base {
     _pauseStartTime = 0;
     _isGameOver = false;
     _isVictory = false;
+    _isEndlessMode = false;
     _wallBoundary;
     _speedRatio = 1;
     _money;
@@ -8415,7 +8430,14 @@ class Game extends Base {
         if (gridInfo) {
             const isWalkable = this._grids[gridInfo.gridX]?.[gridInfo.gridY] === 1;
             if (!isWalkable) {
-                pos = this._originPosition.copy();
+                const originGridInfo = this._pathfinder.getGridInfoAtPosition(this._originPosition, Infinity);
+                if (originGridInfo && this._grids[originGridInfo.gridX]?.[originGridInfo.gridY] === 1) {
+                    pos = this._originPosition.copy();
+                }
+                else {
+                    console.warn(`[Game] Cannot spawn monster: both target and origin positions are blocked`);
+                    return;
+                }
             }
         }
         const ctor = MonsterRegistry.getOrThrow(ctorName);
@@ -8454,6 +8476,7 @@ class Game extends Base {
     }
     _startEndlessMode() {
         this._isVictory = false;
+        this._isEndlessMode = true;
         GameUIManager.hideAllOverlays();
         const waveManager = WaveManager.getInstance();
         const startWave = waveManager.getTotalWaves() + 1;
@@ -8584,14 +8607,26 @@ class Game extends Base {
         if (!this._isVictory && !this._isGameOver && !this._isDummyTestMode) {
             const wm = WaveManager.getInstance();
             if (wm.getState() === WaveState.COMPLETED && this._monsterManager.monsters.length === 0) {
-                this._isVictory = true;
-                this.isPausing = true;
-                GameUIManager.showVictoryOverlay({
-                    totalDamage: this._towerManager.totalDamage,
-                    totalKill: this._towerManager.totalKill,
-                    survivalTime: this._bornStamp ? performance.now() - this._bornStamp : 0,
-                    lifeRemaining: this._life
-                }, () => this._startEndlessMode(), () => window.location.reload());
+                if (this._isEndlessMode) {
+                    const startWave = wm.getTotalWaves() + 1;
+                    const endlessWaves = [];
+                    for (let i = 0; i < 10; i++) {
+                        const def = WaveFactory.createEndlessWaveDefinition(startWave + i);
+                        endlessWaves.push(WaveFactory.createWave(def));
+                    }
+                    wm.appendWaves(endlessWaves);
+                    this._waveUIManager?.updateTotalWaves(wm.getTotalWaves());
+                }
+                else {
+                    this._isVictory = true;
+                    this.isPausing = true;
+                    GameUIManager.showVictoryOverlay({
+                        totalDamage: this._towerManager.totalDamage,
+                        totalKill: this._towerManager.totalKill,
+                        survivalTime: this._bornStamp ? performance.now() - this._bornStamp : 0,
+                        lifeRemaining: this._life
+                    }, () => this._startEndlessMode(), () => window.location.reload());
+                }
             }
         }
         return result;
@@ -8683,7 +8718,9 @@ async function run() {
         document.body.removeChild(mask);
         const gridSizeBase = GRID_CONFIG.BASE_SIZE;
         const gridYSize = GRID_CONFIG.ASPECT_MULTIPLIER;
-        const game = new Game(imageCtrl, gridSizeBase * (gridYSize * (Math.round(innerWidth / innerHeight) - 0.5)), gridSizeBase * gridYSize);
+        const rawColumns = gridSizeBase * (gridYSize * (Math.round(innerWidth / innerHeight) - 0.5));
+        const gridColumns = Math.max(rawColumns, GRID_CONFIG.MIN_COLUMNS ?? 16);
+        const game = new Game(imageCtrl, gridColumns, gridSizeBase * gridYSize);
         game.init().run();
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {

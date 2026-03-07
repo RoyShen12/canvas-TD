@@ -425,6 +425,18 @@ class GameEventHandler {
       return
     }
 
+    // 不能在起点或终点建塔
+    const originPos = Game.callOriginPosition()
+    const destPos = Game.callDestinationPosition()
+    if (originPos && destPos) {
+      const isOriginCell = Math.abs(gridInfo.centerX - originPos.x) < gridSize / 2 && Math.abs(gridInfo.centerY - originPos.y) < gridSize / 2
+      const isDestCell = Math.abs(gridInfo.centerX - destPos.x) < gridSize / 2 && Math.abs(gridInfo.centerY - destPos.y) < gridSize / 2
+      if (isOriginCell || isDestCell) {
+        GameUIManager.showToast('无法建造：不能在起点或终点建塔', 'warning')
+        return
+      }
+    }
+
     // 金币不足
     if (money < this._selectedTowerTypeToBuild.__init_price[0]!) {
       GameUIManager.showToast('金币不足', 'warning')

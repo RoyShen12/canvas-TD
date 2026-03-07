@@ -17,12 +17,6 @@ const GAME_CONFIG = {
   // ============= 渲染配置 =============
   /** 目标帧率 */
   TARGET_FPS: 60,
-  /** 渲染更新周期（每N帧更新一次某些元素） */
-  RENDER_UPDATE_TICK: 3,
-  /** 宝石更新周期 */
-  GEM_UPDATE_TICK: 5,
-  /** 生命值更新周期 */
-  LIFE_UPDATE_TICK: 61,
 
   // ============= 定时器配置 =============
   /** DOT 清理间隔（毫秒） */
@@ -37,10 +31,6 @@ const GAME_CONFIG = {
   MAX_TOWER_LEVEL: 180,
 
   // ============= 鼠标交互 =============
-  /** 鼠标移动节流间隔（毫秒） */
-  MOUSE_MOVE_THROTTLE: 34,
-  /** 双击检测间隔（毫秒） */
-  DOUBLE_CLICK_INTERVAL: 300,
   /** 长按触发时间（毫秒） */
   LONG_PRESS_DURATION: 300,
   /** 长按重复间隔（毫秒） */
@@ -160,6 +150,8 @@ const GRID_CONFIG = {
   BASE_SIZE: 4,
   /** 网格纵横比乘数 */
   ASPECT_MULTIPLIER: 4,
+  /** 最小网格列数（防止窄屏幕负值） */
+  MIN_COLUMNS: 16,
 } as const
 
 // ============= Canvas 图层 Z-Index =============

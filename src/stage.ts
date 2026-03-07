@@ -599,18 +599,27 @@ class WaveFactory {
       }
     } else {
       // 普通波次：混合怪物类型
-      const monstersPerType = Math.ceil(monsterCount / 2)
       const type1 = this.NORMAL_MONSTERS[(waveNumber - 1) % this.NORMAL_MONSTERS.length]!
       const type2 = this.NORMAL_MONSTERS[waveNumber % this.NORMAL_MONSTERS.length]!
 
-      summons.push({
-        monsterName: type1,
-        count: monstersPerType,
-        level: level,
-        spawnInterval: WAVE_CONFIG.DEFAULT_SPAWN_INTERVAL
-      })
+      if (waveNumber <= 1) {
+        // 第一波：单一怪物类型，生成全部数量
+        summons.push({
+          monsterName: type1,
+          count: monsterCount,
+          level: level,
+          spawnInterval: WAVE_CONFIG.DEFAULT_SPAWN_INTERVAL
+        })
+      } else {
+        // 后续波次：两种怪物混合
+        const monstersPerType = Math.ceil(monsterCount / 2)
+        summons.push({
+          monsterName: type1,
+          count: monstersPerType,
+          level: level,
+          spawnInterval: WAVE_CONFIG.DEFAULT_SPAWN_INTERVAL
+        })
 
-      if (waveNumber > 1) {
         summons.push({
           monsterName: type2,
           count: monsterCount - monstersPerType,
