@@ -111,8 +111,8 @@ class TeslaTower extends TowerBase {
     return super.informationSeq.filter(line => !removing.some(rm => rm === line[0]))
   }
 
-  get lighteningAmount(): number | null {
-    return [null, 10, 20][this.rank] ?? null
+  get lighteningAmount(): number {
+    return [5, 10, 20][this.rank] ?? 5
   }
 
   override levelUp(currentMoney: number): number {
@@ -176,7 +176,7 @@ class TeslaTower extends TowerBase {
       const maxTargets = this.lighteningAmount
 
       monsters.forEach(mst => {
-        if (maxTargets !== null && shockCount >= maxTargets) return
+        if (shockCount >= maxTargets) return
         if (!mst.isDead && this.inRange(mst)) {
           this.shock(mst)
           shockCount++
@@ -226,7 +226,7 @@ class TeslaTower extends TowerBase {
       ctx.lineWidth = 1
       ctx.beginPath()
 
-      for (let i = 0; i < (this.lighteningAmount ?? 10); i++) {
+      for (let i = 0; i < this.lighteningAmount; i++) {
         this.renderLightening(ctx)
       }
 

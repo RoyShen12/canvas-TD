@@ -236,7 +236,7 @@ class MaskManTower extends TowerBase {
   }
 
   override produceBullet(idx: number): void {
-    if (this.multipleTarget[idx]) {
+    if (this.multipleTarget[idx] && !this.multipleTarget[idx]!.isDead) {
       const ratio = this.calculateDamageRatio(this.multipleTarget[idx]!)
       this.bulletCtl.Factory(
         this.recordDamage.bind(this),
@@ -274,7 +274,7 @@ class MaskManTower extends TowerBase {
   }
 
   override gemHitHook(idx: number, monsters: MonsterBase[]): void {
-    if (this.gem && this.multipleTarget[idx]) {
+    if (this.gem && this.multipleTarget[idx] && !this.multipleTarget[idx]!.isDead) {
       this.gem.hitHook(this, this.multipleTarget[idx]!, monsters)
     }
   }

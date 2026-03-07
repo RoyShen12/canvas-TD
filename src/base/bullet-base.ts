@@ -102,7 +102,11 @@ abstract class BulletBase extends ItemBase {
 
     const transformed = this.target
       ? this.rotateForward(context, this.target.position)
-      : { restore: () => {} }
+      : (() => {
+          context.save()
+          context.translate(this.position.x, this.position.y)
+          return { restore: () => context.restore() }
+        })()
 
     context.drawImage(
       this.image,

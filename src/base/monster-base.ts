@@ -297,7 +297,7 @@ class MonsterBase extends ItemBase {
       this.freezeDurationTick--
     }
 
-    this.imprecatedRatio = this.imprecatedRatio.filter(imp => --imp.durTick !== 0)
+    this.imprecatedRatio = this.imprecatedRatio.filter(imp => --imp.durTick > 0)
   }
 
   registerShock(durationTick: number, chargeAmount: number, source: TeslaTower, leakChance: number): void {
@@ -328,7 +328,7 @@ class MonsterBase extends ItemBase {
   }
 
   registerImprecate(durationTick: number, imprecationRatio: number): void {
-    this.imprecatedRatio.push({ pow: imprecationRatio, durTick: durationTick })
+    this.imprecatedRatio.push({ pow: imprecationRatio, durTick: Math.round(durationTick) })
   }
 
   runShock(monsters: MonsterBase[]): void {
@@ -400,6 +400,7 @@ class MonsterBase extends ItemBase {
   renderHealthBar(context: CanvasRenderingContext2D): void {
     if (this.health <= 0 || this.health / this.maxHealth > 1) return
 
+    context.save()
     const xAxisOffset = this.healthBarWidth < this.radius * 2 ? 0 : this.healthBarWidth / 2 - this.radius
     const yOffset = this.inscribedSquareSideLength / MONSTER_HEALTH_BAR.Y_OFFSET_DIVISOR
 
@@ -410,7 +411,6 @@ class MonsterBase extends ItemBase {
     context.fillRect(this.position.x - this.radius - xAxisOffset, this.position.y + yOffset, (this.healthBarWidth * this.health) / this.maxHealth, this.healthBarHeight)
 
     if (this.isBoss) {
-      context.save()
       context.fillStyle = this.healthBarTextFillStyle
       context.font = this.healthBarTextFontStyle
       context.fillText(
@@ -418,11 +418,13 @@ class MonsterBase extends ItemBase {
         this.position.x + this.radius + xAxisOffset + 2,
         this.position.y + yOffset + 5
       )
-      context.restore()
     }
+    context.restore()
   }
 
   renderLevel(context: WrappedCanvasRenderingContext2D): void {
+    const savedFont = context.font
+    const savedFillStyle = context.fillStyle
     context.font = '6px TimesNewRoman'
     context.fillStyle = context.manager.towerLevelTextStyle
     context.fillText(
@@ -430,6 +432,8 @@ class MonsterBase extends ItemBase {
       this.position.x + this.radius * TOWER_RENDER_OFFSETS.LEVEL_TEXT_X,
       this.position.y + this.radius * TOWER_RENDER_OFFSETS.LEVEL_TEXT_Y
     )
+    context.font = savedFont
+    context.fillStyle = savedFillStyle
   }
 
   renderDebuffs(context: CanvasRenderingContext2D, imgCtl: ImageManager): void {

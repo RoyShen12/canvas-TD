@@ -187,6 +187,11 @@ class FrostTower extends TowerBase {
     return ret
   }
 
+  override adjustTimersForPause(pauseDuration: number): void {
+    super.adjustTimersForPause(pauseDuration)
+    this.lastFreezeTime += pauseDuration
+  }
+
   override run(monsters: MonsterBase[]): void {
     const inRanged = monsters.filter((mst: MonsterBase) => {
       if (mst.isDead) return false

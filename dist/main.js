@@ -2421,7 +2421,7 @@ class ItemBase extends CircleBase {
         }
         else {
             const r = Math.round(this.radius) || 1;
-            context.fillRect(Math.floor(this.position.x), Math.floor(this.position.y), r, r);
+            context.fillRect(Math.floor(this.position.x - r / 2), Math.floor(this.position.y - r / 2), r, r);
         }
     }
     render(context, _imgCtrl) {
@@ -2436,9 +2436,7 @@ class ItemBase extends CircleBase {
     rotateForward(context, targetPos) {
         context.save();
         context.translate(this.position.x, this.position.y);
-        let theta = Math.atan((this.position.y - targetPos.y) / (this.position.x - targetPos.x));
-        if (this.position.x > targetPos.x)
-            theta += Math.PI;
+        const theta = Math.atan2(targetPos.y - this.position.y, targetPos.x - this.position.x);
         context.rotate(theta);
         return {
             restore() {
@@ -2690,6 +2688,9 @@ class TowerBase extends ItemBase {
     recordShootTime() {
         this._lastShootTime = performance.now();
     }
+    adjustTimersForPause(pauseDuration) {
+        this._lastShootTime += pauseDuration;
+    }
     run(monsters) {
         if (this.canShoot) {
             if (!this.isCurrentTargetAvailable) {
@@ -2748,10 +2749,12 @@ class TowerBase extends ItemBase {
     }
     renderLevel(context) {
         const fontTmp = context.font;
+        const fillTmp = context.fillStyle;
         context.font = '6px TimesNewRoman';
         context.fillStyle = context.manager.towerLevelTextStyle;
         context.fillText('lv ' + this.levelHuman, this.position.x + this.radius * TOWER_RENDER_OFFSETS.LEVEL_TEXT_X, this.position.y + this.radius * TOWER_RENDER_OFFSETS.LEVEL_TEXT_Y);
         context.font = fontTmp;
+        context.fillStyle = fillTmp;
     }
     renderRankStars(context) {
         if (this.rank > 0) {
@@ -2985,7 +2988,7 @@ class MonsterBase extends ItemBase {
         if (this.freezeDurationTick > 0) {
             this.freezeDurationTick--;
         }
-        this.imprecatedRatio = this.imprecatedRatio.filter(imp => --imp.durTick !== 0);
+        this.imprecatedRatio = this.imprecatedRatio.filter(imp => --imp.durTick > 0);
     }
     registerShock(durationTick, chargeAmount, source, leakChance) {
         if (durationTick > this.shockDurationTick) {
@@ -3011,7 +3014,7 @@ class MonsterBase extends ItemBase {
         }
     }
     registerImprecate(durationTick, imprecationRatio) {
-        this.imprecatedRatio.push({ pow: imprecationRatio, durTick: durationTick });
+        this.imprecatedRatio.push({ pow: imprecationRatio, durTick: Math.round(durationTick) });
     }
     runShock(monsters) {
         if (Math.random() < 1 - this.shockLeakChance)
@@ -3071,6 +3074,7 @@ class MonsterBase extends ItemBase {
     renderHealthBar(context) {
         if (this.health <= 0 || this.health / this.maxHealth > 1)
             return;
+        context.save();
         const xAxisOffset = this.healthBarWidth < this.radius * 2 ? 0 : this.healthBarWidth / 2 - this.radius;
         const yOffset = this.inscribedSquareSideLength / MONSTER_HEALTH_BAR.Y_OFFSET_DIVISOR;
         context.strokeStyle = this.healthBarBorderStyle;
@@ -3078,17 +3082,20 @@ class MonsterBase extends ItemBase {
         context.fillStyle = this.healthBarFillStyle;
         context.fillRect(this.position.x - this.radius - xAxisOffset, this.position.y + yOffset, (this.healthBarWidth * this.health) / this.maxHealth, this.healthBarHeight);
         if (this.isBoss) {
-            context.save();
             context.fillStyle = this.healthBarTextFillStyle;
             context.font = this.healthBarTextFontStyle;
             context.fillText(`${FormatUtils.chineseFormatter(this.health, 1)}/${FormatUtils.chineseFormatter(this.maxHealth, 1)}`, this.position.x + this.radius + xAxisOffset + 2, this.position.y + yOffset + 5);
-            context.restore();
         }
+        context.restore();
     }
     renderLevel(context) {
+        const savedFont = context.font;
+        const savedFillStyle = context.fillStyle;
         context.font = '6px TimesNewRoman';
         context.fillStyle = context.manager.towerLevelTextStyle;
         context.fillText('lv ' + this._level, this.position.x + this.radius * TOWER_RENDER_OFFSETS.LEVEL_TEXT_X, this.position.y + this.radius * TOWER_RENDER_OFFSETS.LEVEL_TEXT_Y);
+        context.font = savedFont;
+        context.fillStyle = savedFillStyle;
     }
     renderDebuffs(context, imgCtl) {
         const dSize = 10;
@@ -3204,7 +3211,11 @@ class BulletBase extends ItemBase {
         }
         const transformed = this.target
             ? this.rotateForward(context, this.target.position)
-            : { restore: () => { } };
+            : (() => {
+                context.save();
+                context.translate(this.position.x, this.position.y);
+                return { restore: () => context.restore() };
+            })();
         context.drawImage(this.image, 0, 0, this.image.width, this.image.height, this.inscribedSquareSideLength * -0.5, this.inscribedSquareSideLength * -0.5, this.inscribedSquareSideLength, this.inscribedSquareSideLength);
         transformed.restore();
     }
@@ -4492,6 +4503,14 @@ class _TowerManager {
     render(ctx) {
         this.towers.forEach(tower => tower.render(ctx));
     }
+    adjustTimersForPause(pauseDuration) {
+        for (const tower of this.towers) {
+            tower.adjustTimersForPause(pauseDuration);
+        }
+        for (const tower of this.independentTowers) {
+            tower.adjustTimersForPause(pauseDuration);
+        }
+    }
     rapidRender(ctxRapid, monsters) {
         this.towers.forEach(tower => tower.rapidRender(ctxRapid, monsters));
         this.independentTowers.forEach(tower => tower.rapidRender(ctxRapid, monsters));
@@ -5628,7 +5647,7 @@ class MaskManTower extends TowerBase {
         this.multipleTarget[index] = null;
     }
     produceBullet(idx) {
-        if (this.multipleTarget[idx]) {
+        if (this.multipleTarget[idx] && !this.multipleTarget[idx].isDead) {
             const ratio = this.calculateDamageRatio(this.multipleTarget[idx]);
             this.bulletCtl.Factory(this.recordDamage.bind(this), this.bulletCtorName, this.position.copy().dithering(this.radius), this.Atk * ratio, this.multipleTarget[idx], this.bulletImage, this.critChance, this.critDamageRatio, this.trapChance, this.trapDuration, this.extraBulletV, Math.random() < this.secKillChance);
         }
@@ -5646,7 +5665,7 @@ class MaskManTower extends TowerBase {
         }
     }
     gemHitHook(idx, monsters) {
-        if (this.gem && this.multipleTarget[idx]) {
+        if (this.gem && this.multipleTarget[idx] && !this.multipleTarget[idx].isDead) {
             this.gem.hitHook(this, this.multipleTarget[idx], monsters);
         }
     }
@@ -5764,6 +5783,10 @@ class FrostTower extends TowerBase {
             }
         }
         return ret;
+    }
+    adjustTimersForPause(pauseDuration) {
+        super.adjustTimersForPause(pauseDuration);
+        this.lastFreezeTime += pauseDuration;
     }
     run(monsters) {
         const inRanged = monsters.filter((mst) => {
@@ -5914,7 +5937,7 @@ class TeslaTower extends TowerBase {
         return super.informationSeq.filter(line => !removing.some(rm => rm === line[0]));
     }
     get lighteningAmount() {
-        return [null, 10, 20][this.rank] ?? null;
+        return [5, 10, 20][this.rank] ?? 5;
     }
     levelUp(currentMoney) {
         const ret = super.levelUp(currentMoney);
@@ -5963,7 +5986,7 @@ class TeslaTower extends TowerBase {
             let shockCount = 0;
             const maxTargets = this.lighteningAmount;
             monsters.forEach(mst => {
-                if (maxTargets !== null && shockCount >= maxTargets)
+                if (shockCount >= maxTargets)
                     return;
                 if (!mst.isDead && this.inRange(mst)) {
                     this.shock(mst);
@@ -5998,7 +6021,7 @@ class TeslaTower extends TowerBase {
             const originalLineWidth = ctx.lineWidth;
             ctx.lineWidth = 1;
             ctx.beginPath();
-            for (let i = 0; i < (this.lighteningAmount ?? 10); i++) {
+            for (let i = 0; i < this.lighteningAmount; i++) {
                 this.renderLightening(ctx);
             }
             ctx.closePath();
@@ -6633,14 +6656,14 @@ class WaveManager {
     }
     startNextWave() {
         if (this._state === WaveState.RESTING) {
-            if (this._rewardCallback) {
-                this._rewardCallback(WAVE_CONFIG.EARLY_START_GOLD_BONUS);
-            }
             this._currentWaveIndex++;
             if (this._currentWaveIndex >= this._waves.length) {
                 this._state = WaveState.COMPLETED;
                 console.log('[WaveManager] 所有波次已完成！');
                 return false;
+            }
+            if (this._rewardCallback) {
+                this._rewardCallback(WAVE_CONFIG.EARLY_START_GOLD_BONUS);
             }
             const wave = this._waves[this._currentWaveIndex];
             if (wave) {
@@ -6757,10 +6780,15 @@ class WaveManager {
         const restElapsed = currentTick - this._restStartTick;
         return Math.max(wave.getRestTicks() - restElapsed, 0);
     }
+    hasNextWave() {
+        return this._currentWaveIndex + 1 < this._waves.length;
+    }
     canStartNextWave() {
         return this._state === WaveState.WAITING_FOR_START || this._state === WaveState.RESTING;
     }
     appendWaves(waves) {
+        if (waves.length === 0)
+            return;
         this._waves.push(...waves);
         if (this._state === WaveState.COMPLETED) {
             this._currentWaveIndex = this._waves.length - waves.length;
@@ -6786,7 +6814,7 @@ class WaveFactory {
             if (summon.count <= 0) {
                 throw new Error(`[WaveFactory] 波次 ${def.waveNumber} 召唤配置 ${idx} 的数量无效: ${summon.count}`);
             }
-            if (summon.spawnInterval < 0) {
+            if (summon.spawnInterval <= 0) {
                 throw new Error(`[WaveFactory] 波次 ${def.waveNumber} 召唤配置 ${idx} 的生成间隔无效: ${summon.spawnInterval}`);
             }
         });
@@ -6849,7 +6877,7 @@ class WaveFactory {
             if (waveNumber > 1) {
                 summons.push({
                     monsterName: type2,
-                    count: Math.floor(monstersPerType * 0.5),
+                    count: monsterCount - monstersPerType,
                     level: level,
                     spawnInterval: WAVE_CONFIG.DEFAULT_SPAWN_INTERVAL
                 });
@@ -7038,13 +7066,19 @@ class WaveUIManager {
             this._restTimerEl.textContent = `休息时间: ${remainingSeconds}秒`;
         }
         if (this._startBtnEl) {
-            this._startBtnEl.disabled = false;
-            const bonusText = ` (+${WAVE_CONFIG.EARLY_START_GOLD_BONUS}金币)`;
-            if (isNextBoss) {
-                this._startBtnEl.textContent = `提前开始 BOSS 波${bonusText}`;
+            if (manager.hasNextWave()) {
+                this._startBtnEl.disabled = false;
+                const bonusText = ` (+${WAVE_CONFIG.EARLY_START_GOLD_BONUS}金币)`;
+                if (isNextBoss) {
+                    this._startBtnEl.textContent = `提前开始 BOSS 波${bonusText}`;
+                }
+                else {
+                    this._startBtnEl.textContent = `提前开始第 ${nextWaveNumber} 波${bonusText}`;
+                }
             }
             else {
-                this._startBtnEl.textContent = `提前开始第 ${nextWaveNumber} 波${bonusText}`;
+                this._startBtnEl.disabled = true;
+                this._startBtnEl.textContent = '等待结算...';
             }
         }
     }
@@ -8020,7 +8054,7 @@ class Game extends Base {
         itm.__tly = centerY - R - 3;
         itm.__re_render = width => {
             itm.borderWidth = width;
-            _ctx.clearRect(itm.__tlx, itm.__tly, (R + 2) * 2, (R + 2) * 2);
+            _ctx.clearRect(itm.__tlx, itm.__tly, (R + 3) * 2, (R + 3) * 2);
             itm.render(_ctx);
         };
     }
@@ -8041,6 +8075,7 @@ class Game extends Base {
     _originGrid;
     _destinationGrid;
     _isPausing = true;
+    _pauseStartTime = 0;
     _isGameOver = false;
     _isVictory = false;
     _wallBoundary;
@@ -8112,6 +8147,13 @@ class Game extends Base {
         if (!v)
             this._setBornStamp();
         this._uiManager?.updatePauseButton(v);
+        if (v && !this._isPausing) {
+            this._pauseStartTime = performance.now();
+        }
+        if (!v && this._isPausing && this._pauseStartTime > 0) {
+            const pauseDuration = performance.now() - this._pauseStartTime;
+            this._towerManager.adjustTimersForPause(pauseDuration);
+        }
         this._isPausing = v;
         if (v && !this._isGameOver && !this._isVictory && this._bornStamp) {
             GameUIManager.showPauseOverlay(() => {
@@ -8162,7 +8204,8 @@ class Game extends Base {
         Game.callCanvasContext = name => this._canvasManager.getContext(name);
         Game.callImageBitMap = name => this._imageManager.getImage(name);
         Game.callMidSplitLineX = () => this._midSplitLineX;
-        Game.callMoney = () => [this._money, this.updateMoney.bind(this)];
+        const boundUpdateMoney = this.updateMoney.bind(this);
+        Game.callMoney = () => [this._money, boundUpdateMoney];
         Game.callRemoveTower = t => this._removeTower(t);
     }
     init() {
@@ -8198,7 +8241,12 @@ class Game extends Base {
         this._initEventBindings();
         this._renderOnce();
         Game.callAnimation = (name, pos, w, h, speed, delay, wait, _cb) => {
-            this._imageManager.onPlaySprites.push(new HostedAnimationSprite(this._imageManager.getSprite(name).getClone(speed), pos, w, h, delay, false, wait));
+            const sprite = this._imageManager.getSprite(name);
+            if (!sprite) {
+                console.warn(`[Game] Animation sprite not found: ${name}`);
+                return;
+            }
+            this._imageManager.onPlaySprites.push(new HostedAnimationSprite(sprite.getClone(speed), pos, w, h, delay, false, wait));
         };
         this._initWaveSystem();
         return this;
@@ -8337,7 +8385,24 @@ class Game extends Base {
         }
         const ctor = MonsterRegistry.getOrThrow(ctorName);
         const { imgName, sprSpd } = ctor;
-        this._monsterManager.Factory(ctorName, pos.dithering(this._gridSize / 3), imgName.indexOf('$spr::') !== -1 ? this._imageManager.getSprite(imgName.substr(6)).getClone(sprSpd || 1) : this._imageManager.getImage(imgName), level);
+        let monsterImage;
+        if (imgName.indexOf('$spr::') !== -1) {
+            const sprite = this._imageManager.getSprite(imgName.substring(6));
+            if (!sprite) {
+                console.error(`[Game] Monster sprite not found: ${imgName}`);
+                return;
+            }
+            monsterImage = sprite.getClone(sprSpd || 1);
+        }
+        else {
+            const img = this._imageManager.getImage(imgName);
+            if (!img) {
+                console.error(`[Game] Monster image not found: ${imgName}`);
+                return;
+            }
+            monsterImage = img;
+        }
+        this._monsterManager.Factory(ctorName, pos.dithering(this._gridSize / 3), monsterImage, level);
     }
     _initWaveSystem() {
         const waveManager = WaveManager.getInstance();

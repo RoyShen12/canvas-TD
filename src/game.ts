@@ -183,7 +183,7 @@ class Game extends Base {
     itm.__tly = centerY - R - 3
     itm.__re_render = width => {
       itm.borderWidth = width
-      _ctx.clearRect(itm.__tlx, itm.__tly, (R + 2) * 2, (R + 2) * 2)
+      _ctx.clearRect(itm.__tlx, itm.__tly, (R + 3) * 2, (R + 3) * 2)
       itm.render(_ctx)
     }
   }
@@ -238,6 +238,9 @@ class Game extends Base {
 
   /** 是否暂停中 */
   private _isPausing = true
+
+  /** 暂停开始时间（用于计算暂停持续时间） */
+  private _pauseStartTime = 0
 
   /** 游戏是否结束 */
   private _isGameOver = false
@@ -411,6 +414,17 @@ class Game extends Base {
   public set isPausing(v: boolean) {
     if (!v) this._setBornStamp()
     this._uiManager?.updatePauseButton(v)
+
+    // 暂停开始：记录时间
+    if (v && !this._isPausing) {
+      this._pauseStartTime = performance.now()
+    }
+    // 解除暂停：调整所有塔的冷却计时器
+    if (!v && this._isPausing && this._pauseStartTime > 0) {
+      const pauseDuration = performance.now() - this._pauseStartTime
+      this._towerManager.adjustTimersForPause(pauseDuration)
+    }
+
     this._isPausing = v
 
     // 显示/隐藏暂停覆盖层（不在游戏结束或胜利状态时显示）
@@ -484,7 +498,8 @@ class Game extends Base {
     Game.callCanvasContext = name => this._canvasManager.getContext(name)
     Game.callImageBitMap = name => this._imageManager.getImage(name)
     Game.callMidSplitLineX = () => this._midSplitLineX
-    Game.callMoney = () => [this._money, this.updateMoney.bind(this)]
+    const boundUpdateMoney = this.updateMoney.bind(this)
+    Game.callMoney = () => [this._money, boundUpdateMoney]
     Game.callRemoveTower = t => this._removeTower(t)
   }
 
@@ -542,7 +557,12 @@ class Game extends Base {
     this._renderOnce()
 
     Game.callAnimation = (name, pos, w, h, speed, delay, wait, _cb) => {
-      this._imageManager.onPlaySprites.push(new HostedAnimationSprite(this._imageManager.getSprite(name)!.getClone(speed), pos, w, h, delay, false, wait))
+      const sprite = this._imageManager.getSprite(name)
+      if (!sprite) {
+        console.warn(`[Game] Animation sprite not found: ${name}`)
+        return
+      }
+      this._imageManager.onPlaySprites.push(new HostedAnimationSprite(sprite.getClone(speed), pos, w, h, delay, false, wait))
     }
 
     // 初始化波次系统
@@ -796,10 +816,26 @@ class Game extends Base {
 
     const ctor = MonsterRegistry.getOrThrow(ctorName) as any
     const { imgName, sprSpd } = ctor
+    let monsterImage: ImageBitmap | AnimationSprite
+    if (imgName.indexOf('$spr::') !== -1) {
+      const sprite = this._imageManager.getSprite(imgName.substring(6))
+      if (!sprite) {
+        console.error(`[Game] Monster sprite not found: ${imgName}`)
+        return
+      }
+      monsterImage = sprite.getClone(sprSpd || 1)
+    } else {
+      const img = this._imageManager.getImage(imgName)
+      if (!img) {
+        console.error(`[Game] Monster image not found: ${imgName}`)
+        return
+      }
+      monsterImage = img
+    }
     this._monsterManager.Factory(
       ctorName,
       pos.dithering(this._gridSize / 3),
-      imgName.indexOf('$spr::') !== -1 ? this._imageManager.getSprite(imgName.substr(6))!.getClone(sprSpd || 1) : this._imageManager.getImage(imgName)!,
+      monsterImage,
       level
     )
   }

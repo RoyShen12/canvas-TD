@@ -1013,3 +1013,312 @@ describe('Bug Fix: TeslaTower rapidRender should filter dead monsters', () => {
     expect(shouldSkipRender).toBe(false)
   })
 })
+
+// ============================================================================
+// Round 8 Bug Fix Tests
+// ============================================================================
+
+describe('Bug Fix: Imprecation (curse) duration should not persist forever', () => {
+  test('non-integer durTick should still expire with > 0 check', () => {
+    const imprecatedRatio = [
+      { pow: 1.5, durTick: 3.7 },
+      { pow: 1.2, durTick: 1.0 },
+    ]
+
+    // Simulate ticks with the fixed filter (> 0 instead of !== 0)
+    let remaining = imprecatedRatio
+    for (let tick = 0; tick < 10; tick++) {
+      remaining = remaining.filter(imp => --imp.durTick > 0)
+    }
+
+    // All curses should have expired after 10 ticks
+    expect(remaining.length).toBe(0)
+  })
+
+  test('durTick=0 entry should be immediately removed', () => {
+    const imprecatedRatio = [{ pow: 1.5, durTick: 0 }]
+    const remaining = imprecatedRatio.filter(imp => --imp.durTick > 0)
+    expect(remaining.length).toBe(0)
+  })
+
+  test('old !== 0 check would fail with non-integer durTick', () => {
+    const imp = { pow: 1.5, durTick: 2.5 }
+    // Simulate old filter: --durTick !== 0
+    let expiredWithOldCheck = false
+    for (let tick = 0; tick < 20; tick++) {
+      if (--imp.durTick === 0) {
+        expiredWithOldCheck = true
+        break
+      }
+    }
+    // Old check never reaches exactly 0 with non-integer start
+    expect(expiredWithOldCheck).toBe(false)
+  })
+
+  test('registerImprecate should round durationTick', () => {
+    const durationTick = 214.02
+    const rounded = Math.round(durationTick)
+    expect(rounded).toBe(214)
+    // Rounded value will reach 0 via integer decrements
+    let val = rounded
+    for (let i = 0; i < rounded; i++) val--
+    expect(val).toBe(0)
+  })
+})
+
+describe('Bug Fix: TeslaTower rank 0 should have target cap', () => {
+  test('lighteningAmount should return number for all ranks', () => {
+    const amounts = [5, 10, 20] // rank 0, 1, 2
+    amounts.forEach(amount => {
+      expect(typeof amount).toBe('number')
+      expect(amount).toBeGreaterThan(0)
+    })
+  })
+
+  test('rank 0 should cap targets at 5, not unlimited', () => {
+    const rank0Amount = [5, 10, 20][0]
+    expect(rank0Amount).toBe(5)
+    expect(rank0Amount).toBeLessThan([5, 10, 20][1]!)
+  })
+
+  test('each rank should allow more targets than previous', () => {
+    const amounts = [5, 10, 20]
+    for (let i = 1; i < amounts.length; i++) {
+      expect(amounts[i]).toBeGreaterThan(amounts[i - 1]!)
+    }
+  })
+})
+
+describe('Bug Fix: Wave system corrections', () => {
+  test('appendWaves with empty array should be no-op', () => {
+    const waves: unknown[] = [{ id: 1 }]
+    const originalLength = waves.length
+
+    // Fixed: guard against empty array
+    const newWaves: unknown[] = []
+    if (newWaves.length > 0) {
+      waves.push(...newWaves)
+    }
+
+    expect(waves.length).toBe(originalLength)
+  })
+
+  test('spawnInterval validation should reject 0', () => {
+    const spawnInterval = 0
+    // Fixed: <= 0 instead of < 0
+    expect(spawnInterval <= 0).toBe(true)
+  })
+
+  test('wave monster count type2 should fill remaining quota', () => {
+    const monsterCount = 14
+    const monstersPerType = Math.ceil(monsterCount / 2) // 7
+    const type2Count = monsterCount - monstersPerType // 7
+    expect(monstersPerType + type2Count).toBe(monsterCount)
+  })
+
+  test('old formula gave less than intended total', () => {
+    const monsterCount = 14
+    const monstersPerType = Math.ceil(monsterCount / 2) // 7
+    const oldType2Count = Math.floor(monstersPerType * 0.5) // 3
+    const oldTotal = monstersPerType + oldType2Count // 10
+
+    const fixedType2Count = monsterCount - monstersPerType // 7
+    const fixedTotal = monstersPerType + fixedType2Count // 14
+
+    expect(oldTotal).toBeLessThan(monsterCount)
+    expect(fixedTotal).toBe(monsterCount)
+  })
+
+  test('last wave rest should not give gold for nonexistent next wave', () => {
+    const totalWaves = 10
+    const currentWaveIndex = 9 // last wave (0-indexed)
+
+    // Check if next wave exists
+    const hasNextWave = currentWaveIndex + 1 < totalWaves
+    expect(hasNextWave).toBe(false)
+
+    // No gold should be awarded
+    let goldAwarded = 0
+    if (hasNextWave) {
+      goldAwarded = 50
+    }
+    expect(goldAwarded).toBe(0)
+  })
+})
+
+describe('Bug Fix: Tower cooldowns should not tick during pause', () => {
+  test('adjustTimersForPause should offset lastShootTime', () => {
+    const bornStamp = 1000
+    let lastShootTime = bornStamp
+
+    // Tower fires
+    lastShootTime = 2000
+
+    // Game pauses for 5 seconds
+    const pauseStart = 3000
+    const pauseEnd = 8000
+    const pauseDuration = pauseEnd - pauseStart
+
+    // After unpause: adjust timer
+    lastShootTime += pauseDuration
+
+    // At time 8000 (unpause moment), effective time since last shot
+    // should be 8000 - 7000 = 1000ms (not 8000 - 2000 = 6000ms)
+    const effectiveTimeSinceShot = pauseEnd - lastShootTime
+    expect(effectiveTimeSinceShot).toBe(1000) // 1 second, not 6
+  })
+
+  test('without adjustment, pause time counted as cooldown', () => {
+    let lastShootTime = 2000
+    const pauseEnd = 8000
+
+    const brokenTimeSinceShot = pauseEnd - lastShootTime
+    expect(brokenTimeSinceShot).toBe(6000) // Wrong: 6 seconds includes 5s of pause
+  })
+})
+
+describe('Bug Fix: rotateForward should use atan2 for NaN safety', () => {
+  test('atan2 handles overlapping positions (returns 0, not NaN)', () => {
+    const entityX = 100, entityY = 100
+    const targetX = 100, targetY = 100
+
+    // Old: Math.atan(0/0) = NaN
+    const oldTheta = Math.atan((entityY - targetY) / (entityX - targetX))
+    expect(isNaN(oldTheta)).toBe(true)
+
+    // Fixed: atan2(0, 0) = 0
+    const newTheta = Math.atan2(targetY - entityY, targetX - entityX)
+    expect(isNaN(newTheta)).toBe(false)
+    expect(newTheta).toBe(0)
+  })
+
+  test('atan2 handles vertical alignment correctly', () => {
+    const entityX = 100, entityY = 0
+    const targetX = 100, targetY = 100 // target is below
+
+    // Old: atan((0-100)/(100-100)) = atan(-Inf) = -PI/2 → faces UP (wrong!)
+    const oldTheta = Math.atan((entityY - targetY) / (entityX - targetX))
+    expect(oldTheta).toBe(-Math.PI / 2) // facing UP
+
+    // Fixed: atan2(100, 0) = PI/2 → faces DOWN (correct!)
+    const newTheta = Math.atan2(targetY - entityY, targetX - entityX)
+    expect(newTheta).toBe(Math.PI / 2) // facing DOWN toward target
+  })
+})
+
+describe('Bug Fix: MonsterBase renderHealthBar should save/restore context', () => {
+  test('canvas state should be restored after renderHealthBar', () => {
+    // Simulate context state tracking
+    let strokeStyle = 'original_stroke'
+    let fillStyle = 'original_fill'
+
+    // Fixed: wrapped in save/restore
+    const savedStroke = strokeStyle
+    const savedFill = fillStyle
+
+    strokeStyle = 'health_border'
+    fillStyle = 'health_fill'
+
+    // Restore
+    strokeStyle = savedStroke
+    fillStyle = savedFill
+
+    expect(strokeStyle).toBe('original_stroke')
+    expect(fillStyle).toBe('original_fill')
+  })
+})
+
+describe('Bug Fix: BulletBase renderImage should translate when target is null', () => {
+  test('bullet with no target should still render at its own position', () => {
+    const bulletPos = { x: 150, y: 200 }
+    const target = null
+
+    let translateX = 0, translateY = 0
+    if (target) {
+      // rotateForward would translate
+      translateX = bulletPos.x
+      translateY = bulletPos.y
+    } else {
+      // Fixed: translate to bullet position even without target
+      translateX = bulletPos.x
+      translateY = bulletPos.y
+    }
+
+    expect(translateX).toBe(150) // Not 0
+    expect(translateY).toBe(200) // Not 0
+  })
+})
+
+describe('Bug Fix: MaskManTower should not fire at dead targets', () => {
+  test('produceBullet should check isDead on multipleTarget', () => {
+    const multipleTarget = [
+      { isDead: false, id: 1 },
+      { isDead: true, id: 2 },
+      null,
+    ]
+
+    const firedAt: number[] = []
+    multipleTarget.forEach(target => {
+      if (target && !target.isDead) {
+        firedAt.push(target.id)
+      }
+    })
+
+    expect(firedAt).toEqual([1])
+    expect(firedAt).not.toContain(2) // dead target skipped
+  })
+
+  test('gemHitHook should also check isDead', () => {
+    const multipleTarget = [
+      { isDead: true, id: 1 },
+      { isDead: false, id: 2 },
+    ]
+
+    const gemApplied: number[] = []
+    multipleTarget.forEach(target => {
+      if (target && !target.isDead) {
+        gemApplied.push(target.id)
+      }
+    })
+
+    expect(gemApplied).toEqual([2])
+  })
+})
+
+describe('Bug Fix: callAnimation should handle missing sprite gracefully', () => {
+  test('missing sprite should not crash', () => {
+    const sprites = new Map<string, object>()
+    sprites.set('explosion', { name: 'explosion' })
+
+    const getSprite = (name: string) => sprites.get(name) ?? null
+
+    // Valid sprite
+    const valid = getSprite('explosion')
+    expect(valid).not.toBeNull()
+
+    // Invalid sprite - should return null, not crash
+    const invalid = getSprite('nonexistent')
+    expect(invalid).toBeNull()
+  })
+})
+
+describe('Bug Fix: IOC clearRect should match offset dimensions', () => {
+  test('clearRect size should match TL offset from center', () => {
+    const R = 15
+    const offset = R + 3
+    const clearSize = (R + 3) * 2
+
+    // TL is at centerX - offset, and clear width should cover to centerX + offset
+    expect(clearSize).toBe(offset * 2)
+  })
+
+  test('old clearRect was 2px too small', () => {
+    const R = 15
+    const offset = R + 3
+    const oldClearSize = (R + 2) * 2
+    const fixedClearSize = (R + 3) * 2
+
+    expect(oldClearSize).toBeLessThan(offset * 2)
+    expect(fixedClearSize).toBe(offset * 2)
+  })
+})

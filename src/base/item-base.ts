@@ -92,7 +92,7 @@ class ItemBase extends CircleBase {
     } else {
       // 半径 <= 2, 回退为矩形以简化绘图
       const r = Math.round(this.radius) || 1
-      context.fillRect(Math.floor(this.position.x), Math.floor(this.position.y), r, r)
+      context.fillRect(Math.floor(this.position.x - r / 2), Math.floor(this.position.y - r / 2), r, r)
     }
   }
 
@@ -117,8 +117,7 @@ class ItemBase extends CircleBase {
     context.save()
     context.translate(this.position.x, this.position.y)
 
-    let theta = Math.atan((this.position.y - targetPos.y) / (this.position.x - targetPos.x))
-    if (this.position.x > targetPos.x) theta += Math.PI
+    const theta = Math.atan2(targetPos.y - this.position.y, targetPos.x - this.position.x)
 
     context.rotate(theta)
 

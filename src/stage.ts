@@ -252,16 +252,16 @@ class WaveManager {
    */
   startNextWave(): boolean {
     if (this._state === WaveState.RESTING) {
-      // 提前开始，给予金币奖励
-      if (this._rewardCallback) {
-        this._rewardCallback(WAVE_CONFIG.EARLY_START_GOLD_BONUS)
-      }
-      // 推进到下一波（与自然休息结束逻辑一致）
+      // 推进到下一波
       this._currentWaveIndex++
       if (this._currentWaveIndex >= this._waves.length) {
         this._state = WaveState.COMPLETED
         console.log('[WaveManager] 所有波次已完成！')
         return false
+      }
+      // 提前开始，给予金币奖励
+      if (this._rewardCallback) {
+        this._rewardCallback(WAVE_CONFIG.EARLY_START_GOLD_BONUS)
       }
       // 直接进入生成状态，防止二次调用重复推进
       const wave = this._waves[this._currentWaveIndex]
@@ -442,6 +442,13 @@ class WaveManager {
   }
 
   /**
+   * 是否存在下一波
+   */
+  hasNextWave(): boolean {
+    return this._currentWaveIndex + 1 < this._waves.length
+  }
+
+  /**
    * 是否可以开始下一波
    */
   canStartNextWave(): boolean {
@@ -452,6 +459,7 @@ class WaveManager {
    * 追加波次（用于无尽模式）
    */
   appendWaves(waves: Wave[]): void {
+    if (waves.length === 0) return
     this._waves.push(...waves)
     if (this._state === WaveState.COMPLETED) {
       this._currentWaveIndex = this._waves.length - waves.length
@@ -514,7 +522,7 @@ class WaveFactory {
       if (summon.count <= 0) {
         throw new Error(`[WaveFactory] 波次 ${def.waveNumber} 召唤配置 ${idx} 的数量无效: ${summon.count}`)
       }
-      if (summon.spawnInterval < 0) {
+      if (summon.spawnInterval <= 0) {
         throw new Error(`[WaveFactory] 波次 ${def.waveNumber} 召唤配置 ${idx} 的生成间隔无效: ${summon.spawnInterval}`)
       }
     })
@@ -605,7 +613,7 @@ class WaveFactory {
       if (waveNumber > 1) {
         summons.push({
           monsterName: type2,
-          count: Math.floor(monstersPerType * 0.5),
+          count: monsterCount - monstersPerType,
           level: level,
           spawnInterval: WAVE_CONFIG.DEFAULT_SPAWN_INTERVAL
         })
@@ -867,12 +875,17 @@ class WaveUIManager {
     }
 
     if (this._startBtnEl) {
-      this._startBtnEl.disabled = false
-      const bonusText = ` (+${WAVE_CONFIG.EARLY_START_GOLD_BONUS}金币)`
-      if (isNextBoss) {
-        this._startBtnEl.textContent = `提前开始 BOSS 波${bonusText}`
+      if (manager.hasNextWave()) {
+        this._startBtnEl.disabled = false
+        const bonusText = ` (+${WAVE_CONFIG.EARLY_START_GOLD_BONUS}金币)`
+        if (isNextBoss) {
+          this._startBtnEl.textContent = `提前开始 BOSS 波${bonusText}`
+        } else {
+          this._startBtnEl.textContent = `提前开始第 ${nextWaveNumber} 波${bonusText}`
+        }
       } else {
-        this._startBtnEl.textContent = `提前开始第 ${nextWaveNumber} 波${bonusText}`
+        this._startBtnEl.disabled = true
+        this._startBtnEl.textContent = '等待结算...'
       }
     }
   }

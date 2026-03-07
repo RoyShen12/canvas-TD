@@ -97,6 +97,18 @@ class _TowerManager {
   }
 
   /**
+   * 暂停后调整所有塔的计时器
+   */
+  adjustTimersForPause(pauseDuration: number): void {
+    for (const tower of this.towers) {
+      tower.adjustTimersForPause(pauseDuration)
+    }
+    for (const tower of this.independentTowers) {
+      tower.adjustTimersForPause(pauseDuration)
+    }
+  }
+
+  /**
    * 快速渲染 (动画层)
    */
   rapidRender(ctxRapid: WrappedCanvasRenderingContext2D, monsters: MonsterBase[]): void {

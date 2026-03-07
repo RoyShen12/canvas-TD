@@ -351,6 +351,13 @@ abstract class TowerBase extends ItemBase {
     this._lastShootTime = performance.now()
   }
 
+  /**
+   * 暂停后调整计时器，将暂停期间的时间排除
+   */
+  adjustTimersForPause(pauseDuration: number): void {
+    this._lastShootTime += pauseDuration
+  }
+
   run(monsters: MonsterBase[]): void {
     if (this.canShoot) {
       if (!this.isCurrentTargetAvailable) {
@@ -436,6 +443,7 @@ abstract class TowerBase extends ItemBase {
 
   renderLevel(context: WrappedCanvasRenderingContext2D): void {
     const fontTmp = context.font
+    const fillTmp = context.fillStyle
     context.font = '6px TimesNewRoman'
     context.fillStyle = context.manager.towerLevelTextStyle
     context.fillText(
@@ -444,6 +452,7 @@ abstract class TowerBase extends ItemBase {
       this.position.y + this.radius * TOWER_RENDER_OFFSETS.LEVEL_TEXT_Y
     )
     context.font = fontTmp
+    context.fillStyle = fillTmp
   }
 
   renderRankStars(context: CanvasRenderingContext2D): void {
