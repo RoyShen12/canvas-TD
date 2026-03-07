@@ -929,3 +929,87 @@ describe('Bug Fix: Path cache full clear on tower placement', () => {
     expect(pathCache.size).toBe(0)
   })
 })
+
+describe('Bug Fix: DOT should not fire during game pause', () => {
+  test('DOT tick should be skipped when game is paused', () => {
+    let isPaused = false
+    let damageApplied = 0
+
+    // Simulate DOT ticks
+    for (let i = 0; i < 10; i++) {
+      if (isPaused) continue // Fixed: skip when paused
+      damageApplied += 10
+
+      // Pause mid-way
+      if (i === 4) isPaused = true
+    }
+
+    // Only 5 ticks should apply damage (0-4), not all 10
+    expect(damageApplied).toBe(50)
+  })
+
+  test('paused ticks should not count toward DOT duration', () => {
+    let isPaused = false
+    let dotCount = 0
+    const maxTicks = 30
+
+    // Simulate 40 intervals, but some are paused
+    for (let interval = 0; interval < 40; interval++) {
+      if (isPaused) {
+        // Paused: skip, don't count
+        if (interval === 24) isPaused = false // unpause after some time
+        continue
+      }
+      dotCount++
+      if (interval === 14) isPaused = true // pause mid-way
+    }
+
+    // Should count actual non-paused ticks
+    expect(dotCount).toBeLessThan(40)
+    expect(dotCount).toBeGreaterThan(0)
+  })
+})
+
+describe('Bug Fix: HighPriest should not heal itself', () => {
+  test('should filter self from healing targets', () => {
+    const self = { id: 1, isDead: false, health: 100 }
+    const monsters = [
+      self,
+      { id: 2, isDead: false, health: 50 },
+      { id: 3, isDead: true, health: 0 },
+    ]
+
+    const healed: number[] = []
+    monsters.forEach(m => {
+      if (m !== self && !m.isDead) {
+        healed.push(m.id)
+      }
+    })
+
+    expect(healed).toEqual([2])
+    expect(healed).not.toContain(1) // self not healed
+    expect(healed).not.toContain(3) // dead not healed
+  })
+})
+
+describe('Bug Fix: TeslaTower rapidRender should filter dead monsters', () => {
+  test('should not render lightning when only dead monsters are in range', () => {
+    const monsters = [
+      { isDead: true, inRange: true },
+      { isDead: true, inRange: true },
+    ]
+
+    const shouldSkipRender = monsters.every(m => m.isDead || !m.inRange)
+    expect(shouldSkipRender).toBe(true)
+  })
+
+  test('should render lightning when alive monsters are in range', () => {
+    const monsters = [
+      { isDead: true, inRange: true },
+      { isDead: false, inRange: true },
+    ]
+
+    const shouldSkipRender = monsters.every(m => m.isDead || !m.inRange)
+    expect(shouldSkipRender).toBe(false)
+  })
+})

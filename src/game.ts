@@ -533,6 +533,9 @@ class Game extends Base {
     this._eventHandler = new GameEventHandler(this)
     this._uiManager = new GameUIManager()
 
+    // 将暂停状态暴露给 DOT 管理器
+    DOTManager.isPaused = () => this._isPausing
+
     this._initButtons()
     this._initEventBindings()
     this._renderOnce()

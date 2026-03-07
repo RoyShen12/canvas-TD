@@ -109,9 +109,9 @@ class HighPriest extends MonsterBase {
       )
       Game.callAnimation('healing_1', animPos, this.healingRange, this.healingRange, 1, 0)
 
-      // 治疗范围内的所有怪物
+      // 治疗范围内的所有同伴（不包括自己和已死亡单位）
       monsters.forEach(m => {
-        if (this.inHealingRange(m)) {
+        if (m !== this && !m.isDead && this.inHealingRange(m)) {
           this.heal(m)
         }
       })

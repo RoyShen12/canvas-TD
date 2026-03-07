@@ -19,6 +19,9 @@ interface IDOTTarget {
  * 处理持续伤害效果的安装和管理
  */
 class DOTManager {
+  /** 暂停状态检查回调，由 Game 设置 */
+  static isPaused: () => boolean = () => false
+
   /**
    * 安装 DOT 效果（不可叠加）
    * @param target 目标单位
@@ -58,6 +61,9 @@ class DOTManager {
     targetRecord[dotDebuffName] = true
 
     const itv = setInterval(() => {
+      // 暂停时跳过 DOT 跳伤（不计入持续时间）
+      if (DOTManager.isPaused()) return
+
       if (++dotCount > duration / interval) {
         // 效果结束、移除状态、结束计时器
         targetRecord[dotDebuffName] = false
@@ -120,6 +126,9 @@ class DOTManager {
     targetRecord[dotDebuffName]!.push(thisId)
 
     const itv = setInterval(() => {
+      // 暂停时跳过 DOT 跳伤（不计入持续时间）
+      if (DOTManager.isPaused()) return
+
       if (++dotCount > duration / interval) {
         // 效果结束、结束计时器
         targetRecord[dotDebuffName] = targetRecord[dotDebuffName]!.filter(d => d !== thisId)

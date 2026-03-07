@@ -747,6 +747,7 @@ class RenderUtils {
     }
 }
 class DOTManager {
+    static isPaused = () => false;
     static installDOT(target, dotDebuffName, duration, interval, singleAttack, isIgnoreArmor, damageEmitter) {
         const targetRecord = target;
         if (typeof targetRecord[dotDebuffName] !== 'boolean') {
@@ -762,6 +763,8 @@ class DOTManager {
         let dotCount = 0;
         targetRecord[dotDebuffName] = true;
         const itv = setInterval(() => {
+            if (DOTManager.isPaused())
+                return;
             if (++dotCount > duration / interval) {
                 targetRecord[dotDebuffName] = false;
                 clearInterval(itv);
@@ -795,6 +798,8 @@ class DOTManager {
         const thisId = MathUtils.randomStr(8);
         targetRecord[dotDebuffName].push(thisId);
         const itv = setInterval(() => {
+            if (DOTManager.isPaused())
+                return;
             if (++dotCount > duration / interval) {
                 targetRecord[dotDebuffName] = targetRecord[dotDebuffName].filter(d => d !== thisId);
                 clearInterval(itv);
@@ -4021,7 +4026,7 @@ class HighPriest extends MonsterBase {
             const animPos = new Position(this.position.x - this.healingRange / 2, this.position.y - this.healingRange / 2);
             Game.callAnimation('healing_1', animPos, this.healingRange, this.healingRange, 1, 0);
             monsters.forEach(m => {
-                if (this.inHealingRange(m)) {
+                if (m !== this && !m.isDead && this.inHealingRange(m)) {
                     this.heal(m);
                 }
             });
@@ -5982,7 +5987,7 @@ class TeslaTower extends TowerBase {
         TeslaTower.renderLighteningCop(ctx, this.position.x, this.position.y, x, y, this.Rng / 2);
     }
     rapidRender(ctx, monsters) {
-        if (monsters.every(m => !this.inRange(m))) {
+        if (monsters.every(m => m.isDead || !this.inRange(m))) {
             return;
         }
         if (this.renderPermit > 0) {
@@ -8185,6 +8190,7 @@ class Game extends Base {
         this._renderer.initCanvasLayers(this._leftAreaWidth, this._leftAreaHeight);
         this._eventHandler = new GameEventHandler(this);
         this._uiManager = new GameUIManager();
+        DOTManager.isPaused = () => this._isPausing;
         this._initButtons();
         this._initEventBindings();
         this._renderOnce();

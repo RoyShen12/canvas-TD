@@ -212,8 +212,8 @@ class TeslaTower extends TowerBase {
   }
 
   rapidRender(ctx: CanvasRenderingContext2D, monsters: MonsterBase[]): void {
-    // 如果没有范围内的怪物，不渲染
-    if (monsters.every(m => !this.inRange(m))) {
+    // 如果没有范围内的活着的怪物，不渲染
+    if (monsters.every(m => m.isDead || !this.inRange(m))) {
       return
     }
 
