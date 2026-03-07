@@ -133,15 +133,21 @@ class CanvasManager {
     }
 
     if (style) {
+      ctx.save()
       fillOrStroke ? (ctx.fillStyle = style) : (ctx.strokeStyle = style)
     }
     if (font) {
+      if (!style) ctx.save()
       ctx.font = font
     }
 
     fillOrStroke
       ? ctx.fillText(text, positionTL.x, positionTL.y, width)
       : ctx.strokeText(text, positionTL.x, positionTL.y, width)
+
+    if (style || font) {
+      ctx.restore()
+    }
   }
 
   // ============= 私有方法 =============

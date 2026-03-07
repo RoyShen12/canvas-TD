@@ -263,9 +263,18 @@ class WaveManager {
         console.log('[WaveManager] 所有波次已完成！')
         return false
       }
+      // 直接进入生成状态，防止二次调用重复推进
+      const wave = this._waves[this._currentWaveIndex]
+      if (wave) {
+        wave.reset()
+        this._state = WaveState.SPAWNING
+        console.log(`[WaveManager] 提前开始第 ${wave.getWaveNumber()} 波`)
+        return true
+      }
+      return false
     }
 
-    if (this._state === WaveState.WAITING_FOR_START || this._state === WaveState.RESTING) {
+    if (this._state === WaveState.WAITING_FOR_START) {
       const wave = this._waves[this._currentWaveIndex]
       if (wave) {
         wave.reset()

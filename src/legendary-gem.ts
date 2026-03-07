@@ -328,11 +328,12 @@ class MirinaeTeardropOfTheStarweaver extends GemBase {
   }
 
   override tickHook(thisTower: TowerBase, monsters: MonsterBase[]) {
-    if (this.canHit && monsters.length > 0) {
-      const t = randomElement(monsters)
-      this.chit(thisTower, t)
-      this.lastHitTime = performance.now()
-    }
+    if (!this.canHit) return
+    const alive = monsters.filter(m => !m.isDead)
+    if (alive.length === 0) return
+    const t = randomElement(alive)
+    this.chit(thisTower, t)
+    this.lastHitTime = performance.now()
   }
 }
 
@@ -630,7 +631,7 @@ class EchoOfLight extends GemBase {
       'beOnLightEcho',
       EchoOfLight.duration,
       EchoOfLight.dotInterval,
-      Math.round((thisTower.Atk * critR * thisTower.calculateDamageRatio(monster) * this.extraTotalDamageRatio) / this.lightDotCount),
+      Math.round((thisTower.Atk * critR * this.extraTotalDamageRatio) / this.lightDotCount),
       false,
       thisTower.recordDamage.bind(thisTower)
     )
@@ -683,7 +684,7 @@ class GemOfAnger extends GemBase {
    * @todo 如果这个钩子函数负担过重可以减少调用频率
    */
   override tickHook(thisTower: TowerBase, monsters: MonsterBase[]) {
-    const inRangeCount = monsters.filter(mst => thisTower.inRange(mst)).length
+    const inRangeCount = monsters.filter(mst => !mst.isDead && thisTower.inRange(mst)).length
     // console.log('inRangeCount', inRangeCount)
     thisTower._angerGemAtkRatio = this.damageAdditionPerEnemy * inRangeCount + 1
   }

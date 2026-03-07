@@ -88,7 +88,10 @@ class MonsterManager {
   scanSwipe(emitCallback: typeof Game.prototype.emitMoney): void {
     this.monsters = this.monsters.filter(m => {
       if (m.isDead) {
-        emitCallback(m.reward)
+        // 到达终点的怪物不给奖励
+        if (!m.reachedEnd) {
+          emitCallback(m.reward)
+        }
         m.destroy()
       }
       return !m.isDead

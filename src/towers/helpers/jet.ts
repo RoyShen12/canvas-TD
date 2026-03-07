@@ -212,7 +212,7 @@ class _Jet extends TowerBase {
 
     if (isDead) {
       this.recordKill()
-      Game.updateGemPoint += (isBoss ? TowerBase.killBossPointEarnings : TowerBase.killNormalPointEarnings) + this._killExtraPoint
+      Game.updateGemPoint += (isBoss ? TowerBase.killBossPointEarnings : TowerBase.killNormalPointEarnings) + (this.carrierTower?._killExtraPoint ?? 0)
 
       if (this.carrierTower?.gem) {
         this.carrierTower.gem.killHook(this.carrierTower, monster)
@@ -225,8 +225,8 @@ class _Jet extends TowerBase {
     if (this.carrierTower) {
       this.carrierTower.addKill()
     }
-    // 击杀额外金币通过全局上下文获取
-    this.gameContext.getMoney()[1](this._killExtraGold)
+    // 击杀额外金币来自航母（宝石效果设置在航母上）
+    this.gameContext.getMoney()[1](this.carrierTower?._killExtraGold ?? 0)
   }
 
   /**
@@ -280,6 +280,15 @@ class _Jet extends TowerBase {
   }
 
   override render(): void {}
+
+  override destroy(): void {
+    super.destroy()
+    // 减少航母载机计数，允许航母生成新载机
+    if (this.carrierTower) {
+      this.carrierTower.jetCount = Math.max(0, this.carrierTower.jetCount - 1)
+      this.carrierTower.clearJetCache()
+    }
+  }
 
   override renderLevel(): void {}
 

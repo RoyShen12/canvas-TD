@@ -346,7 +346,7 @@ class StatusBoardRenderer {
       const ct = TowerBase.GemNameToGemCtor(selected) as unknown as typeof GemBase
       const [money, emitter] = getMoney()
 
-      if (money > ct.price) {
+      if (money >= ct.price) {
         emitter(-ct.price)
         // 安装宝石并获取返回的宝石实例
         data.gem = data.inlayGem(selected)

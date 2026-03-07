@@ -283,6 +283,9 @@ abstract class TowerBase extends ItemBase {
       this.recordKill()
       Game.updateGemPoint += (isBoss ? TowerBase.killBossPointEarnings : TowerBase.killNormalPointEarnings) + this._killExtraPoint
 
+      // 清理 BaneOfTheStricken 的伤害比例记录
+      this._eachMonsterDamageRatio.delete(monster.id)
+
       if (this.gem) {
         this.gem.killHook(this, monster)
       }

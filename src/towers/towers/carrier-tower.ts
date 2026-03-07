@@ -104,6 +104,11 @@ class CarrierTower extends TowerBase {
     return newJets
   }
 
+  /** 清除载机缓存（当载机销毁时调用） */
+  clearJetCache(): void {
+    this.jetCountMap.clear()
+  }
+
   override run(): void {
     // 检查是否可以释放新载机
     if (this.canShoot && this.jetCount < this.KidCount) {

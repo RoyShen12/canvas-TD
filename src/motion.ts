@@ -14,8 +14,10 @@ interface PositionLike {
  * 所有修改方法都就地修改并返回 this 以支持链式调用
  */
 class Position implements PositionLike {
-  /** 原点 (0, 0) */
-  static ORIGIN = new Position(0, 0)
+  /** 原点 (0, 0) - 只读，不可修改 */
+  static get ORIGIN(): Position {
+    return new Position(0, 0)
+  }
 
   /**
    * 计算两点间的平方距离（比 distance 更快，用于比较）
@@ -208,7 +210,9 @@ class PolarVector {
  */
 class Vector extends Position {
   /** 零向量 */
-  static zero = new Vector(0, 0)
+  static get zero(): Vector {
+    return new Vector(0, 0)
+  }
 
   /**
    * 创建指向 (x, y) 方向的单位向量

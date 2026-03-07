@@ -161,7 +161,7 @@ class LaserTower extends TowerBase {
    * 发射激光，击中第一个敌人，扫动一定距离，造成燃烧伤害
    */
   override produceBullet(_i: number, monsters: MonsterBase[]): void {
-    if (!this.target) return
+    if (!this.target || this.target.isDead) return
 
     const targetPos = new Position(this.target.position.x, this.target.position.y)
     const hitRadius = this.FWd / 2 + Game.callGridSideSize() / 3 - 2

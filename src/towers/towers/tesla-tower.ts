@@ -173,7 +173,7 @@ class TeslaTower extends TowerBase {
       this.renderPermit = TeslaTower.shockRenderFrames
 
       monsters.forEach(mst => {
-        if (this.inRange(mst)) {
+        if (!mst.isDead && this.inRange(mst)) {
           this.shock(mst)
 
           // 电击塔不调用父类 shoot，故主动挂载 gem 钩子

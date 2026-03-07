@@ -114,6 +114,7 @@ class ItemBase extends CircleBase {
    * 用于让物体朝向目标方向
    */
   protected rotateForward(context: CanvasRenderingContext2D, targetPos: Position): { restore: () => void } {
+    context.save()
     context.translate(this.position.x, this.position.y)
 
     let theta = Math.atan((this.position.y - targetPos.y) / (this.position.x - targetPos.x))
@@ -121,13 +122,9 @@ class ItemBase extends CircleBase {
 
     context.rotate(theta)
 
-    // 捕获当前 DPI 以在恢复时使用
-    const dpi = window.devicePixelRatio
-
     return {
       restore() {
-        context.resetTransform()
-        context.scale(dpi, dpi)
+        context.restore()
       },
     }
   }

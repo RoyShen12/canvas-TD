@@ -131,6 +131,8 @@ class DOTManager {
         target.applyDamage(dotD)
         damageEmitter(target)
       } else {
+        // 目标死亡，清除 debuff ID，结束计时器
+        targetRecord[dotDebuffName] = targetRecord[dotDebuffName]!.filter(d => d !== thisId)
         clearInterval(itv)
       }
     }, interval)

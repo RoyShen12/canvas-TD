@@ -806,6 +806,7 @@ class DOTManager {
                 damageEmitter(target);
             }
             else {
+                targetRecord[dotDebuffName] = targetRecord[dotDebuffName].filter(d => d !== thisId);
                 clearInterval(itv);
             }
         }, interval);
@@ -813,7 +814,9 @@ class DOTManager {
     }
 }
 class Position {
-    static ORIGIN = new Position(0, 0);
+    static get ORIGIN() {
+        return new Position(0, 0);
+    }
     static distancePow2(a, b) {
         return (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
     }
@@ -905,7 +908,9 @@ class PolarVector {
     }
 }
 class Vector extends Position {
-    static zero = new Vector(0, 0);
+    static get zero() {
+        return new Vector(0, 0);
+    }
     static unit(x, y) {
         const len = Math.sqrt(x * x + y * y);
         if (len === 0) {
@@ -1148,7 +1153,7 @@ class StatusBoardRenderer {
         btn.onclick = () => {
             const ct = TowerBase.GemNameToGemCtor(selected);
             const [money, emitter] = getMoney();
-            if (money > ct.price) {
+            if (money >= ct.price) {
                 emitter(-ct.price);
                 data.gem = data.inlayGem(selected);
                 this.render(data, bx1, by1, true, showMoreDetail, specifiedWidth, getElement, getMoney, _updateGemPoint, _setUpdateGemPoint);
@@ -1680,11 +1685,14 @@ class MirinaeTeardropOfTheStarweaver extends GemBase {
         }
     }
     tickHook(thisTower, monsters) {
-        if (this.canHit && monsters.length > 0) {
-            const t = randomElement(monsters);
-            this.chit(thisTower, t);
-            this.lastHitTime = performance.now();
-        }
+        if (!this.canHit)
+            return;
+        const alive = monsters.filter(m => !m.isDead);
+        if (alive.length === 0)
+            return;
+        const t = randomElement(alive);
+        this.chit(thisTower, t);
+        this.lastHitTime = performance.now();
     }
 }
 class BaneOfTheStricken extends GemBase {
@@ -1903,7 +1911,7 @@ class EchoOfLight extends GemBase {
     }
     hitHook(thisTower, monster) {
         const critR = this.getCritMultiplier(thisTower);
-        DOTManager.installDotDuplicatable(monster, 'beOnLightEcho', EchoOfLight.duration, EchoOfLight.dotInterval, Math.round((thisTower.Atk * critR * thisTower.calculateDamageRatio(monster) * this.extraTotalDamageRatio) / this.lightDotCount), false, thisTower.recordDamage.bind(thisTower));
+        DOTManager.installDotDuplicatable(monster, 'beOnLightEcho', EchoOfLight.duration, EchoOfLight.dotInterval, Math.round((thisTower.Atk * critR * this.extraTotalDamageRatio) / this.lightDotCount), false, thisTower.recordDamage.bind(thisTower));
     }
 }
 class GemOfAnger extends GemBase {
@@ -1934,7 +1942,7 @@ class GemOfAnger extends GemBase {
         return GemOfAnger.baseDamageAdditionPerEnemy + this.level * GemOfAnger.damageAdditionPerEnemyLevelMx;
     }
     tickHook(thisTower, monsters) {
-        const inRangeCount = monsters.filter(mst => thisTower.inRange(mst)).length;
+        const inRangeCount = monsters.filter(mst => !mst.isDead && thisTower.inRange(mst)).length;
         thisTower._angerGemAtkRatio = this.damageAdditionPerEnemy * inRangeCount + 1;
     }
 }
@@ -2429,16 +2437,15 @@ class ItemBase extends CircleBase {
         }
     }
     rotateForward(context, targetPos) {
+        context.save();
         context.translate(this.position.x, this.position.y);
         let theta = Math.atan((this.position.y - targetPos.y) / (this.position.x - targetPos.x));
         if (this.position.x > targetPos.x)
             theta += Math.PI;
         context.rotate(theta);
-        const dpi = window.devicePixelRatio;
         return {
             restore() {
-                context.resetTransform();
-                context.scale(dpi, dpi);
+                context.restore();
             },
         };
     }
@@ -2640,6 +2647,7 @@ class TowerBase extends ItemBase {
         if (isDead) {
             this.recordKill();
             Game.updateGemPoint += (isBoss ? TowerBase.killBossPointEarnings : TowerBase.killNormalPointEarnings) + this._killExtraPoint;
+            this._eachMonsterDamageRatio.delete(monster.id);
             if (this.gem) {
                 this.gem.killHook(this, monster);
             }
@@ -2835,6 +2843,7 @@ class MonsterBase extends ItemBase {
     lastAbsDmg = 0;
     isBoss = false;
     isDead = false;
+    reachedEnd = false;
     isAbstractItem = false;
     isInvincible = false;
     name = null;
@@ -3040,6 +3049,7 @@ class MonsterBase extends ItemBase {
         }
         else if (path.length === 0) {
             lifeTokenEmitter(-this.damage);
+            this.reachedEnd = true;
             this.isDead = true;
         }
         else {
@@ -3723,14 +3733,20 @@ class CanvasManager {
             ctx.restore();
         }
         if (style) {
+            ctx.save();
             fillOrStroke ? (ctx.fillStyle = style) : (ctx.strokeStyle = style);
         }
         if (font) {
+            if (!style)
+                ctx.save();
             ctx.font = font;
         }
         fillOrStroke
             ? ctx.fillText(text, positionTL.x, positionTL.y, width)
             : ctx.strokeText(text, positionTL.x, positionTL.y, width);
+        if (style || font) {
+            ctx.restore();
+        }
     }
     _validateId(id) {
         if (this.canvasContextMapping.has(id)) {
@@ -3865,7 +3881,9 @@ class MonsterManager {
     scanSwipe(emitCallback) {
         this.monsters = this.monsters.filter(m => {
             if (m.isDead) {
-                emitCallback(m.reward);
+                if (!m.reachedEnd) {
+                    emitCallback(m.reward);
+                }
                 m.destroy();
             }
             return !m.isDead;
@@ -5200,7 +5218,7 @@ class _Jet extends TowerBase {
         Game.updateGemPoint += TowerBase.damageToPoint(lastAbsDmg);
         if (isDead) {
             this.recordKill();
-            Game.updateGemPoint += (isBoss ? TowerBase.killBossPointEarnings : TowerBase.killNormalPointEarnings) + this._killExtraPoint;
+            Game.updateGemPoint += (isBoss ? TowerBase.killBossPointEarnings : TowerBase.killNormalPointEarnings) + (this.carrierTower?._killExtraPoint ?? 0);
             if (this.carrierTower?.gem) {
                 this.carrierTower.gem.killHook(this.carrierTower, monster);
             }
@@ -5210,7 +5228,7 @@ class _Jet extends TowerBase {
         if (this.carrierTower) {
             this.carrierTower.addKill();
         }
-        this.gameContext.getMoney()[1](this._killExtraGold);
+        this.gameContext.getMoney()[1](this.carrierTower?._killExtraGold ?? 0);
     }
     reChooseMostThreateningTarget(targetList) {
         this.target = _.minBy(targetList.filter(m => !m.isDead), mst => {
@@ -5246,6 +5264,13 @@ class _Jet extends TowerBase {
         }
     }
     render() { }
+    destroy() {
+        super.destroy();
+        if (this.carrierTower) {
+            this.carrierTower.jetCount = Math.max(0, this.carrierTower.jetCount - 1);
+            this.carrierTower.clearJetCache();
+        }
+    }
     renderLevel() { }
     renderImage(ctx) {
         if (this.target) {
@@ -5663,6 +5688,8 @@ class FrostTower extends TowerBase {
         if (!this.canFreeze)
             return;
         monsters.forEach(mst => {
+            if (mst.isDead)
+                return;
             Game.callAnimation('icicle', new Position(mst.position.x - mst.radius, mst.position.y), mst.radius * 2, mst.radius * 2);
             mst.registerFreeze(this.freezeDurationTick);
             if (this.freezeEffectLevel >= 2) {
@@ -5733,6 +5760,8 @@ class FrostTower extends TowerBase {
     }
     run(monsters) {
         const inRanged = monsters.filter((mst) => {
+            if (mst.isDead)
+                return false;
             const inRange = this.inRange(mst);
             if (inRange) {
                 const newSpeedRatio = 1 - this.SPR;
@@ -5925,7 +5954,7 @@ class TeslaTower extends TowerBase {
             this.gemAttackHook(monsters);
             this.renderPermit = TeslaTower.shockRenderFrames;
             monsters.forEach(mst => {
-                if (this.inRange(mst)) {
+                if (!mst.isDead && this.inRange(mst)) {
                     this.shock(mst);
                     if (this.gem) {
                         this.gem.hitHook(this, mst, monsters);
@@ -6071,7 +6100,9 @@ class BlackMagicTower extends TowerBase {
                 this.imprecationPower += MAGIC_CONSTANTS.KILL_POWER_BONUS;
                 this.imprecationHaste += MAGIC_CONSTANTS.KILL_HASTE_BONUS;
             }
-            this.target.registerImprecate((this.Idr / 1000) * 60, this.Ide);
+            if (!this.target.isDead) {
+                this.target.registerImprecate((this.Idr / 1000) * 60, this.Ide);
+            }
         }
     }
     rapidRender(ctx) {
@@ -6180,7 +6211,7 @@ class LaserTower extends TowerBase {
         return ret;
     }
     produceBullet(_i, monsters) {
-        if (!this.target)
+        if (!this.target || this.target.isDead)
             return;
         const targetPos = new Position(this.target.position.x, this.target.position.y);
         const hitRadius = this.FWd / 2 + Game.callGridSideSize() / 3 - 2;
@@ -6268,6 +6299,9 @@ class CarrierTower extends TowerBase {
         const newJets = Game.callIndependentTowerList().filter(tow => tow.carrierTower && tow.carrierTower === this);
         this.jetCountMap.set(this.jetCount, newJets);
         return newJets;
+    }
+    clearJetCache() {
+        this.jetCountMap.clear();
     }
     run() {
         if (this.canShoot && this.jetCount < this.KidCount) {
@@ -6596,8 +6630,16 @@ class WaveManager {
                 console.log('[WaveManager] 所有波次已完成！');
                 return false;
             }
+            const wave = this._waves[this._currentWaveIndex];
+            if (wave) {
+                wave.reset();
+                this._state = WaveState.SPAWNING;
+                console.log(`[WaveManager] 提前开始第 ${wave.getWaveNumber()} 波`);
+                return true;
+            }
+            return false;
         }
-        if (this._state === WaveState.WAITING_FOR_START || this._state === WaveState.RESTING) {
+        if (this._state === WaveState.WAITING_FOR_START) {
             const wave = this._waves[this._currentWaveIndex];
             if (wave) {
                 wave.reset();

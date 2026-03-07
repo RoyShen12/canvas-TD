@@ -57,6 +57,8 @@ class MonsterBase extends ItemBase {
 
   public isBoss = false
   public isDead = false
+  /** 标记怪物是否到达了终点（非战斗死亡） */
+  public reachedEnd = false
   protected isAbstractItem = false
   protected isInvincible = false
 
@@ -366,6 +368,7 @@ class MonsterBase extends ItemBase {
     } else if (path.length === 0) {
       // 完成任务，造成伤害，杀死自己
       lifeTokenEmitter(-this.damage)
+      this.reachedEnd = true
       this.isDead = true
     } else {
       // 移动

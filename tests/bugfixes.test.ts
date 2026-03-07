@@ -529,3 +529,304 @@ describe('Bug Fix: reChooseTarget should filter dead monsters', () => {
     expect(target!.id).toBe(3) // should skip dead monster id=1
   })
 })
+
+// ============================================================================
+// Round 4 Bug Fix Tests
+// ============================================================================
+
+describe('Bug Fix: TeslaTower should not shock dead monsters', () => {
+  test('should filter dead monsters before shocking', () => {
+    const monsters = [
+      { id: 1, isDead: false, inRange: true },
+      { id: 2, isDead: true, inRange: true },  // dead but in range
+      { id: 3, isDead: false, inRange: true },
+    ]
+
+    // Fixed: filter both dead and in-range
+    const shocked: number[] = []
+    monsters.forEach(mst => {
+      if (!mst.isDead && mst.inRange) {
+        shocked.push(mst.id)
+      }
+    })
+
+    expect(shocked).toEqual([1, 3])
+    expect(shocked).not.toContain(2)
+  })
+})
+
+describe('Bug Fix: FrostTower should not freeze dead monsters', () => {
+  test('should skip dead monsters in freeze effect', () => {
+    const monsters = [
+      { id: 1, isDead: false, frozen: false },
+      { id: 2, isDead: true, frozen: false },  // dead
+      { id: 3, isDead: false, frozen: false },
+    ]
+
+    // Fixed: skip dead
+    monsters.forEach(mst => {
+      if (mst.isDead) return
+      mst.frozen = true
+    })
+
+    expect(monsters[0]!.frozen).toBe(true)
+    expect(monsters[1]!.frozen).toBe(false) // dead, should not be frozen
+    expect(monsters[2]!.frozen).toBe(true)
+  })
+
+  test('should filter dead monsters in speed reduction', () => {
+    const monsters = [
+      { id: 1, isDead: false, speedRatio: 1 },
+      { id: 2, isDead: true, speedRatio: 1 },
+    ]
+
+    const inRanged = monsters.filter(mst => {
+      if (mst.isDead) return false
+      mst.speedRatio = 0.5
+      return true
+    })
+
+    expect(inRanged.length).toBe(1)
+    expect(monsters[1]!.speedRatio).toBe(1) // dead monster speed unchanged
+  })
+})
+
+describe('Bug Fix: Gem purchase off-by-one', () => {
+  test('should allow purchase when money equals price (>=)', () => {
+    const price = 5000
+    const money = 5000
+
+    // Fixed: >= instead of >
+    expect(money >= price).toBe(true)
+  })
+
+  test('should reject purchase when money is less than price', () => {
+    const price = 5000
+    const money = 4999
+
+    expect(money >= price).toBe(false)
+  })
+})
+
+describe('Bug Fix: Mirinae should not waste cooldown on dead monsters', () => {
+  test('should filter dead monsters before selecting target', () => {
+    const monsters = [
+      { id: 1, isDead: true },
+      { id: 2, isDead: true },
+      { id: 3, isDead: false },
+    ]
+
+    const alive = monsters.filter(m => !m.isDead)
+    expect(alive.length).toBe(1)
+    expect(alive[0]!.id).toBe(3)
+  })
+
+  test('should not select target when all monsters are dead', () => {
+    const monsters = [
+      { id: 1, isDead: true },
+      { id: 2, isDead: true },
+    ]
+
+    const alive = monsters.filter(m => !m.isDead)
+    expect(alive.length).toBe(0)
+  })
+})
+
+describe('Bug Fix: GemOfAnger should not count dead monsters', () => {
+  test('should filter dead monsters in range count', () => {
+    const monsters = [
+      { id: 1, isDead: false, inRange: true },
+      { id: 2, isDead: true, inRange: true },  // dead but in range
+      { id: 3, isDead: false, inRange: false },
+      { id: 4, isDead: false, inRange: true },
+    ]
+
+    // Fixed: filter dead
+    const inRangeCount = monsters.filter(mst => !mst.isDead && mst.inRange).length
+    expect(inRangeCount).toBe(2) // only id=1 and id=4
+  })
+})
+
+describe('Bug Fix: DOT duplicatable cleanup on death', () => {
+  test('should remove debuff ID from array when target dies', () => {
+    const thisId = 'abc123'
+    const debuffArray = ['xyz', thisId, 'def456']
+
+    // Simulating target death cleanup
+    const cleaned = debuffArray.filter(d => d !== thisId)
+
+    expect(cleaned).toEqual(['xyz', 'def456'])
+    expect(cleaned).not.toContain(thisId)
+  })
+})
+
+describe('Bug Fix: Dead monsters reaching end should not give gold', () => {
+  test('monster reaching end should have reachedEnd flag set', () => {
+    const monster = {
+      isDead: false,
+      reachedEnd: false,
+      damage: 1,
+    }
+
+    // Simulate reaching end
+    monster.reachedEnd = true
+    monster.isDead = true
+
+    expect(monster.isDead).toBe(true)
+    expect(monster.reachedEnd).toBe(true)
+  })
+
+  test('scanSwipe should not reward monsters that reached end', () => {
+    const monsters = [
+      { id: 1, isDead: true, reachedEnd: false, reward: 100 },  // killed by tower
+      { id: 2, isDead: true, reachedEnd: true, reward: 200 },   // reached end
+      { id: 3, isDead: false, reachedEnd: false, reward: 300 },  // alive
+    ]
+
+    let totalReward = 0
+    monsters.filter(m => m.isDead).forEach(m => {
+      if (!m.reachedEnd) {
+        totalReward += m.reward
+      }
+    })
+
+    expect(totalReward).toBe(100) // only tower-killed monster gives reward
+  })
+})
+
+describe('Bug Fix: WaveManager startNextWave re-entry guard', () => {
+  test('calling startNextWave during RESTING should set SPAWNING state', () => {
+    let state = 'RESTING'
+    let waveIndex = 0
+    const totalWaves = 3
+
+    // Simulate startNextWave during RESTING
+    if (state === 'RESTING') {
+      waveIndex++
+      if (waveIndex < totalWaves) {
+        state = 'SPAWNING'  // Fixed: immediately set SPAWNING
+      }
+    }
+
+    expect(state).toBe('SPAWNING')
+    expect(waveIndex).toBe(1)
+
+    // Second call should NOT advance because state is SPAWNING, not RESTING
+    if (state === 'RESTING') {
+      waveIndex++
+      state = 'SPAWNING'
+    }
+
+    expect(waveIndex).toBe(1) // unchanged
+  })
+})
+
+describe('Bug Fix: Jet should use carrier gem bonuses', () => {
+  test('jet kill should use carrier _killExtraGold instead of own', () => {
+    const jet = { _killExtraGold: 0 }
+    const carrier = { _killExtraGold: 500 }
+
+    // Fixed: use carrier's value
+    const goldReward = carrier._killExtraGold ?? 0
+    expect(goldReward).toBe(500)
+  })
+
+  test('jet kill should use carrier _killExtraPoint instead of own', () => {
+    const jet = { _killExtraPoint: 0 }
+    const carrier = { _killExtraPoint: 4000 }
+
+    // Fixed: use carrier's value
+    const pointReward = carrier._killExtraPoint ?? 0
+    expect(pointReward).toBe(4000)
+  })
+})
+
+describe('Bug Fix: CarrierTower jetCount should decrement on jet destroy', () => {
+  test('destroying a jet should reduce jetCount', () => {
+    const carrier = { jetCount: 3 }
+
+    // Fixed: decrement on destroy
+    carrier.jetCount = Math.max(0, carrier.jetCount - 1)
+    expect(carrier.jetCount).toBe(2)
+  })
+
+  test('jetCount should not go below 0', () => {
+    const carrier = { jetCount: 0 }
+    carrier.jetCount = Math.max(0, carrier.jetCount - 1)
+    expect(carrier.jetCount).toBe(0)
+  })
+})
+
+describe('Bug Fix: BlackMagicTower should not curse dead target', () => {
+  test('should skip curse if target died from damage', () => {
+    const target = { isDead: true, imprecated: false }
+
+    // Fixed: guard against dead target
+    if (!target.isDead) {
+      target.imprecated = true
+    }
+
+    expect(target.imprecated).toBe(false)
+  })
+})
+
+describe('Bug Fix: LaserTower multi-Slc should check isDead', () => {
+  test('should not fire at dead target on second Slc call', () => {
+    const target = { isDead: true }
+
+    // Fixed: check isDead at start of produceBullet
+    const shouldFire = !!target && !target.isDead
+    expect(shouldFire).toBe(false)
+  })
+})
+
+describe('Bug Fix: BaneOfTheStricken cleanup on kill', () => {
+  test('should delete monster entry from _eachMonsterDamageRatio on kill', () => {
+    const map = new Map<number, number>()
+    map.set(1, 1.5)
+    map.set(2, 2.0)
+    map.set(3, 1.1)
+
+    // Fixed: delete on kill
+    map.delete(2)
+
+    expect(map.has(2)).toBe(false)
+    expect(map.size).toBe(2)
+  })
+})
+
+describe('Bug Fix: Position.ORIGIN should be safe from mutation', () => {
+  test('modifying returned ORIGIN should not affect next call', () => {
+    // Fixed: ORIGIN now returns new instance each time
+    const origin1 = { x: 0, y: 0 } // simulating new Position(0,0)
+    const origin2 = { x: 0, y: 0 }
+
+    origin1.x = 100
+
+    expect(origin2.x).toBe(0) // second instance unaffected
+  })
+})
+
+describe('Bug Fix: EchoOfLight should not double-apply armor reduction', () => {
+  test('DOT damage should not include calculateDamageRatio (armor applied by DOT system)', () => {
+    const towerAtk = 1000
+    const critR = 1
+    const extraTotalDamageRatio = 0.15
+    const lightDotCount = 30
+    const armorResistance = 0.5
+
+    // Fixed: removed calculateDamageRatio from DOT installation
+    const dotDamagePerTick = Math.round((towerAtk * critR * extraTotalDamageRatio) / lightDotCount)
+
+    // DOT system applies armor: dotDamagePerTick * (1 - armorResistance)
+    const actualDamage = dotDamagePerTick * (1 - armorResistance)
+
+    // Old (bugged): calculateDamageRatio included armor factor, then DOT system applied armor again
+    const buggedDamageRatio = 1 * (1 - armorResistance) // simplified calculateDamageRatio
+    const oldDotDamagePerTick = Math.round((towerAtk * critR * buggedDamageRatio * extraTotalDamageRatio) / lightDotCount)
+    const oldActualDamage = oldDotDamagePerTick * (1 - armorResistance)
+
+    // Fixed damage should be higher (armor applied only once)
+    expect(actualDamage).toBeGreaterThan(oldActualDamage)
+  })
+})

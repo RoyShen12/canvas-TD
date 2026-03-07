@@ -162,8 +162,10 @@ class BlackMagicTower extends TowerBase {
         this.imprecationHaste += MAGIC_CONSTANTS.KILL_HASTE_BONUS
       }
 
-      // 诅咒目标
-      this.target.registerImprecate((this.Idr / 1000) * 60, this.Ide)
+      // 诅咒目标（仅对存活目标）
+      if (!this.target.isDead) {
+        this.target.registerImprecate((this.Idr / 1000) * 60, this.Ide)
+      }
     }
   }
 

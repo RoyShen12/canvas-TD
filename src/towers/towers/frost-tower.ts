@@ -96,6 +96,8 @@ class FrostTower extends TowerBase {
     if (!this.canFreeze) return
 
     monsters.forEach(mst => {
+      if (mst.isDead) return
+
       Game.callAnimation(
         'icicle',
         new Position(mst.position.x - mst.radius, mst.position.y),
@@ -187,6 +189,7 @@ class FrostTower extends TowerBase {
 
   override run(monsters: MonsterBase[]): void {
     const inRanged = monsters.filter((mst: MonsterBase) => {
+      if (mst.isDead) return false
       const inRange = this.inRange(mst)
 
       if (inRange) {
