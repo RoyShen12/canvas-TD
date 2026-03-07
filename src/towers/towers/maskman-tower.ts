@@ -266,7 +266,10 @@ class MaskManTower extends TowerBase {
           this.reChooseTarget(monsters, idx)
         }
       }
-      this.shoot(monsters)
+      // 只有至少一个目标有效时才射击
+      if (this.multipleTarget.some(t => t != null)) {
+        this.shoot(monsters)
+      }
     }
   }
 

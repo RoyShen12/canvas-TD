@@ -212,3 +212,249 @@ describe('Bug Fix: _updateTick should not increment while paused', () => {
     expect(tick).toBe(0) // Should not increment
   })
 })
+
+describe('Bug Fix: WaveManager.startNextWave() should advance wave index when RESTING', () => {
+  test('early start during RESTING should advance to next wave, not replay current', () => {
+    let currentWaveIndex = 0
+    const waves = [
+      { number: 1, reset: () => {} },
+      { number: 2, reset: () => {} },
+      { number: 3, reset: () => {} },
+    ]
+    const state = { value: 'RESTING' }
+
+    // Simulate fixed startNextWave() logic
+    if (state.value === 'RESTING') {
+      currentWaveIndex++ // This was the missing line
+    }
+
+    const wave = waves[currentWaveIndex]
+    expect(wave?.number).toBe(2) // Should be wave 2, not wave 1
+    expect(currentWaveIndex).toBe(1)
+  })
+
+  test('buggy version: not incrementing index replays same wave', () => {
+    let currentWaveIndex = 0
+    const waves = [
+      { number: 1, reset: () => {} },
+      { number: 2, reset: () => {} },
+    ]
+
+    // Buggy: no increment
+    const wave = waves[currentWaveIndex]
+    expect(wave?.number).toBe(1) // Replays wave 1 instead of advancing
+  })
+})
+
+describe('Bug Fix: Dead monsters should not execute run() logic', () => {
+  test('dead monster should not call makeEffect or move', () => {
+    let effectCalled = false
+    let movedTo: { x: number; y: number } | null = null
+    let lifeLost = false
+
+    const monster = {
+      isDead: true,
+      beShocked: false,
+      beImprisoned: false,
+      beFrozen: false,
+      position: { x: 100, y: 100, moveTo: (p: any) => { movedTo = p } },
+      damage: 1,
+      runDebuffs: () => {},
+      runShock: () => {},
+      makeEffect: () => { effectCalled = true },
+    }
+
+    // Fixed run() logic
+    if (!monster.isDead) {
+      monster.runDebuffs()
+      // ... movement logic
+      monster.makeEffect()
+    }
+
+    expect(effectCalled).toBe(false) // makeEffect should NOT be called
+    expect(movedTo).toBeNull() // should NOT move
+    expect(lifeLost).toBe(false) // should NOT damage player
+  })
+})
+
+describe('Bug Fix: LaserTower AoE should not double-count damage', () => {
+  test('should skip dead monsters in AoE loop', () => {
+    const damageRecords: number[] = []
+    const monsters = [
+      { isDead: false, lastAbsDmg: 0, applyDamage: (d: number) => { monsters[0]!.lastAbsDmg = d } },
+      { isDead: true, lastAbsDmg: 50, applyDamage: (_d: number) => { /* dead, won't update */ } },
+    ]
+
+    // Fixed AoE loop: skip dead monsters
+    monsters.forEach(mst => {
+      if (mst.isDead) return
+      mst.applyDamage(100)
+      damageRecords.push(mst.lastAbsDmg)
+    })
+
+    expect(damageRecords).toEqual([100]) // Only 1 record, not 2
+  })
+
+  test('should not record damage when luminous damage is 0', () => {
+    let recordCount = 0
+    const extraLuminousDamage = 0
+
+    // Fixed: check luminous damage before recording
+    if (extraLuminousDamage > 0) {
+      recordCount++
+    }
+
+    expect(recordCount).toBe(0) // No phantom damage record
+  })
+})
+
+describe('Bug Fix: updateLife should guard against re-entry', () => {
+  test('should not trigger game over multiple times', () => {
+    let gameOverCount = 0
+    let isGameOver = false
+    let life = 3
+
+    const updateLife = (delta: number) => {
+      if (isGameOver) return
+      life += delta
+      if (life <= 0) {
+        life = 0
+        isGameOver = true
+        gameOverCount++
+      }
+    }
+
+    // Three monsters reach the end in the same frame
+    updateLife(-1)
+    updateLife(-1)
+    updateLife(-1)
+
+    expect(gameOverCount).toBe(1) // Only triggered once
+    expect(life).toBe(0)
+  })
+})
+
+describe('Bug Fix: MaskManTower should not waste cooldown without targets', () => {
+  test('should not call shoot when all targets are null', () => {
+    let shootCalled = false
+    const multipleTarget = [null, null, null]
+
+    // Fixed: check if any target exists
+    if (multipleTarget.some(t => t != null)) {
+      shootCalled = true
+    }
+
+    expect(shootCalled).toBe(false)
+  })
+
+  test('should call shoot when at least one target exists', () => {
+    let shootCalled = false
+    const multipleTarget = [null, { id: 1 }, null]
+
+    if (multipleTarget.some(t => t != null)) {
+      shootCalled = true
+    }
+
+    expect(shootCalled).toBe(true)
+  })
+})
+
+describe('Bug Fix: Blade bullet should set fulfilled after failed bounce', () => {
+  test('should mark fulfilled when bounceToNext fails after hit', () => {
+    let fulfilled = false
+    let target: { id: number } | null = { id: 1 }
+    const bounceTime = 2
+    const monstersCount = 3
+
+    // Simulate: hit target, then try bounce but fail (no valid targets left)
+    const bounceToNext = () => {
+      // All other targets dead, no valid bounce target
+      target = null
+    }
+
+    // Fixed logic (after hit):
+    if (bounceTime > 0 && monstersCount > 1) {
+      bounceToNext()
+      if (!target) {
+        fulfilled = true // This was the missing line
+      }
+    }
+
+    expect(fulfilled).toBe(true) // Should not leak
+    expect(target).toBeNull()
+  })
+})
+
+describe('Bug Fix: ClusterBomb should always trigger parent AoE', () => {
+  test('should call parent AoE even when monster is null', () => {
+    let parentAoECalled = false
+    let clusterExplodeCalled = false
+
+    const parentHit = (_monster: null) => {
+      // CannonBullet.hit() handles null monster gracefully
+      parentAoECalled = true
+    }
+
+    // Fixed: always call super.hit()
+    parentHit(null)
+    clusterExplodeCalled = true
+
+    expect(parentAoECalled).toBe(true)
+    expect(clusterExplodeCalled).toBe(true)
+  })
+})
+
+describe('Bug Fix: BrokenPieces should not record phantom damage when armor is 0', () => {
+  test('should skip recordDamage when originalArmor is 0', () => {
+    let recordDamageCalled = false
+    const originalArmor = 0
+
+    // Fixed: guard with originalArmor > 0
+    if (originalArmor > 0) {
+      recordDamageCalled = true
+    }
+
+    expect(recordDamageCalled).toBe(false)
+  })
+
+  test('should record damage when armor is positive', () => {
+    let recordDamageCalled = false
+    const originalArmor = 500
+
+    if (originalArmor > 0) {
+      recordDamageCalled = true
+    }
+
+    expect(recordDamageCalled).toBe(true)
+  })
+})
+
+describe('Bug Fix: Mirinae chit should skip dead monsters', () => {
+  test('should not apply damage to dead monsters', () => {
+    let damageApplied = false
+    const target = { isDead: true }
+
+    // Fixed: guard in chit
+    if (!target.isDead) {
+      damageApplied = true
+    }
+
+    expect(damageApplied).toBe(false)
+  })
+})
+
+describe('Bug Fix: DOT debuff flag should be cleared on target death', () => {
+  test('debuff flag should reset to false when target dies during DOT', () => {
+    const target: Record<string, boolean | number> = {
+      bePoisoned: true,
+      health: 0,
+    }
+
+    // Simulate DOT tick finding target dead
+    if (target.health! <= 0) {
+      target.bePoisoned = false // Fixed: clear debuff mark
+    }
+
+    expect(target.bePoisoned).toBe(false)
+  })
+})

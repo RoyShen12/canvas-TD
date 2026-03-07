@@ -310,6 +310,8 @@ class MirinaeTeardropOfTheStarweaver extends GemBase {
   }
 
   private chit(thisTower: TowerBase, target: MonsterBase) {
+    if (target.isDead) return
+
     target.applyDamage(thisTower.Atk * this.chitDamageRatio * (1 - target.armorResistance))
     thisTower.recordDamage(target)
 
@@ -752,7 +754,9 @@ class BrokenPieces extends GemBase {
       monster._armor = 0
     }
 
-    monster.applyDamage(this.armorBasedDamageRatio * originalArmor)
-    thisTower.recordDamage(monster)
+    if (originalArmor > 0) {
+      monster.applyDamage(this.armorBasedDamageRatio * originalArmor)
+      thisTower.recordDamage(monster)
+    }
   }
 }

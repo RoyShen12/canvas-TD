@@ -311,10 +311,8 @@ class ClusterBomb extends CannonBullet {
   /**
    * 集束炸弹命中后会爆炸，分裂出 8 枚小型炸弹
    */
-  override hit(monster: MonsterBase, _magnification: number = 1, monsters: MonsterBase[]): void {
-    if (monster) {
-      super.hit(monster, _magnification, monsters)
-    }
+  override hit(monster: Optional<MonsterBase>, _magnification: number = 1, monsters: MonsterBase[]): void {
+    super.hit(monster, _magnification, monsters)
 
     this.clusterExplode(
       monsters,

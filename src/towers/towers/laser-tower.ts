@@ -208,14 +208,19 @@ class LaserTower extends TowerBase {
     // 对区域内怪物造成火焰伤害
     const bgContext = Game.callCanvasContext('bg') as WrappedCanvasRenderingContext2D
     monsters.forEach(mst => {
+      if (mst.isDead) return
       if (bgContext.isPointInPath(flameArea, mst.position.x, mst.position.y) && this.target) {
         // 电浆伤害 (无视防御)
-        mst.applyDamage(this.extraLuminousDamage * this.calculateDamageRatio(mst))
-        this.recordDamage(mst)
+        if (this.extraLuminousDamage > 0) {
+          mst.applyDamage(this.extraLuminousDamage * this.calculateDamageRatio(mst))
+          if (mst.lastAbsDmg > 0) this.recordDamage(mst)
+        }
 
         // 火焰伤害
-        mst.applyDamage(this.FAtk * (1 - mst.armorResistance) * this.calculateDamageRatio(mst))
-        this.recordDamage(mst)
+        if (!mst.isDead) {
+          mst.applyDamage(this.FAtk * (1 - mst.armorResistance) * this.calculateDamageRatio(mst))
+          this.recordDamage(mst)
+        }
       }
     })
   }

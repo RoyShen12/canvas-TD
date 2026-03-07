@@ -47,13 +47,14 @@ class ImageManager {
    */
   async loadImages(): Promise<void> {
     const loadTasks: Promise<[string, ImageBitmap]>[] = BITMAP_CONFIGS.map(({ name, url }) => {
-      const prom: Promise<[string, ImageBitmap]> = new Promise(res => {
+      const prom: Promise<[string, ImageBitmap]> = new Promise((res, rej) => {
         const img = new Image()
         img.onload = () => {
           createImageBitmap(img).then(bitmap => {
             res([name, bitmap])
-          })
+          }).catch(err => rej(new Error(`Failed to create bitmap for ${name}: ${err}`)))
         }
+        img.onerror = () => rej(new Error(`Failed to load image: ${name} (${url})`))
         img.src = url
       })
       return prom
@@ -70,14 +71,15 @@ class ImageManager {
    */
   async loadSpriteSheets(): Promise<void> {
     const loadTasks: Promise<[string, AnimationSprite]>[] = SPRITE_SHEET_CONFIGS.map(({ name, url, x, y }) => {
-      const prom: Promise<[string, AnimationSprite]> = new Promise(res => {
+      const prom: Promise<[string, AnimationSprite]> = new Promise((res, rej) => {
         const img = new Image()
         img.onload = () => {
           createImageBitmap(img).then(bitmap => {
             const sprite = new AnimationSprite(bitmap, x, y)
             res([name, sprite])
-          })
+          }).catch(err => rej(new Error(`Failed to create sprite bitmap for ${name}: ${err}`)))
         }
+        img.onerror = () => rej(new Error(`Failed to load sprite sheet: ${name} (${url})`))
         img.src = url
       })
       return prom

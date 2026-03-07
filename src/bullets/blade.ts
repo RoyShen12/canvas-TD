@@ -80,6 +80,9 @@ class Blade extends BulletBase {
       // 尝试弹跳
       if (this.bounceTime > 0 && monsters.length > 1) {
         this.bounceToNext(monsters)
+        if (!this.target) {
+          this.fulfilled = true
+        }
       } else {
         this.fulfilled = true
         this.target = null

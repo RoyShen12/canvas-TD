@@ -780,6 +780,16 @@ class Game extends Base {
    * 生成怪物
    */
   private _spawnMonster(level: number, pos: Position, ctorName: string): void {
+    // 验证生成位置是否在可通行格子上
+    const gridInfo = this._pathfinder.getGridInfoAtPosition(pos, Infinity)
+    if (gridInfo) {
+      const isWalkable = this._grids[gridInfo.gridX]?.[gridInfo.gridY] === 1
+      if (!isWalkable) {
+        // 生成位置不可通行（例如有塔），回退到起点位置
+        pos = this._originPosition.copy()
+      }
+    }
+
     const ctor = MonsterRegistry.getOrThrow(ctorName) as any
     const { imgName, sprSpd } = ctor
     this._monsterManager.Factory(
@@ -864,6 +874,8 @@ class Game extends Base {
    * @param delta 变化量
    */
   public updateLife(delta: number): void {
+    if (this._isGameOver) return
+
     this._life += delta
     if (this._life <= 0) {
       this._life = 0

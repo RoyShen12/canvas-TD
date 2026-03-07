@@ -773,6 +773,7 @@ class DOTManager {
                 damageEmitter(target);
             }
             else {
+                targetRecord[dotDebuffName] = false;
                 clearInterval(itv);
             }
         }, interval);
@@ -1664,6 +1665,8 @@ class MirinaeTeardropOfTheStarweaver extends GemBase {
         return this.level >= MirinaeTeardropOfTheStarweaver.levelRequirement && performance.now() - this.lastHitTime > MirinaeTeardropOfTheStarweaver.Hst;
     }
     chit(thisTower, target) {
+        if (target.isDead)
+            return;
         target.applyDamage(thisTower.Atk * this.chitDamageRatio * (1 - target.armorResistance));
         thisTower.recordDamage(target);
         const w = Game.callGridSideSize() * 2;
@@ -1978,8 +1981,10 @@ class BrokenPieces extends GemBase {
         else {
             monster._armor = 0;
         }
-        monster.applyDamage(this.armorBasedDamageRatio * originalArmor);
-        thisTower.recordDamage(monster);
+        if (originalArmor > 0) {
+            monster.applyDamage(this.armorBasedDamageRatio * originalArmor);
+            thisTower.recordDamage(monster);
+        }
     }
 }
 var DebuffType;
@@ -2622,6 +2627,12 @@ class TowerBase extends ItemBase {
         this._killCount++;
         this.gameContext.getMoney()[1](this._killExtraGold);
     }
+    addDamage(amount) {
+        this._totalDamage += amount;
+    }
+    addKill() {
+        this._killCount++;
+    }
     recordDamage(monster) {
         const { lastAbsDmg, isDead, isBoss } = monster;
         this._totalDamage += lastAbsDmg;
@@ -3016,6 +3027,8 @@ class MonsterBase extends ItemBase {
         }
     }
     run(path, lifeTokenEmitter, towers, monsters) {
+        if (this.isDead)
+            return;
         this.runDebuffs();
         if (this.beShocked)
             this.runShock(monsters);
@@ -3029,7 +3042,9 @@ class MonsterBase extends ItemBase {
         else {
             this.position.moveTo(path[0], this.speedValue);
         }
-        this.makeEffect(towers, monsters);
+        if (!this.isDead) {
+            this.makeEffect(towers, monsters);
+        }
     }
     renderHealthChange(context) {
         if (!this.textScrollBox) {
@@ -3483,9 +3498,7 @@ class ClusterBomb extends CannonBullet {
         }
     }
     hit(monster, _magnification = 1, monsters) {
-        if (monster) {
-            super.hit(monster, _magnification, monsters);
-        }
+        super.hit(monster, _magnification, monsters);
         this.clusterExplode(monsters, this.childExplodeRadius, this.childBombDistance, this.childExplodeDamage, 45, 10);
     }
 }
@@ -3556,6 +3569,9 @@ class Blade extends BulletBase {
             this.hit(this.target, 1, monsters);
             if (this.bounceTime > 0 && monsters.length > 1) {
                 this.bounceToNext(monsters);
+                if (!this.target) {
+                    this.fulfilled = true;
+                }
             }
             else {
                 this.fulfilled = true;
@@ -5173,6 +5189,26 @@ class _Jet extends TowerBase {
             this.carrierTower.killCount += v;
         }
     }
+    recordDamage(monster) {
+        const { lastAbsDmg, isDead, isBoss } = monster;
+        if (this.carrierTower) {
+            this.carrierTower.addDamage(lastAbsDmg);
+        }
+        Game.updateGemPoint += TowerBase.damageToPoint(lastAbsDmg);
+        if (isDead) {
+            this.recordKill();
+            Game.updateGemPoint += (isBoss ? TowerBase.killBossPointEarnings : TowerBase.killNormalPointEarnings) + this._killExtraPoint;
+            if (this.carrierTower?.gem) {
+                this.carrierTower.gem.killHook(this.carrierTower, monster);
+            }
+        }
+    }
+    recordKill() {
+        if (this.carrierTower) {
+            this.carrierTower.addKill();
+        }
+        this.gameContext.getMoney()[1](this._killExtraGold);
+    }
     reChooseMostThreateningTarget(targetList) {
         this.target = _.minBy(targetList, mst => {
             return Position.distancePow2(Game.callDestinationPosition(), mst.position);
@@ -5569,7 +5605,9 @@ class MaskManTower extends TowerBase {
                     this.reChooseTarget(monsters, idx);
                 }
             }
-            this.shoot(monsters);
+            if (this.multipleTarget.some(t => t != null)) {
+                this.shoot(monsters);
+            }
         }
     }
     gemHitHook(idx, monsters) {
@@ -6158,11 +6196,18 @@ class LaserTower extends TowerBase {
         this.recordDamage(this.target);
         const bgContext = Game.callCanvasContext('bg');
         monsters.forEach(mst => {
+            if (mst.isDead)
+                return;
             if (bgContext.isPointInPath(flameArea, mst.position.x, mst.position.y) && this.target) {
-                mst.applyDamage(this.extraLuminousDamage * this.calculateDamageRatio(mst));
-                this.recordDamage(mst);
-                mst.applyDamage(this.FAtk * (1 - mst.armorResistance) * this.calculateDamageRatio(mst));
-                this.recordDamage(mst);
+                if (this.extraLuminousDamage > 0) {
+                    mst.applyDamage(this.extraLuminousDamage * this.calculateDamageRatio(mst));
+                    if (mst.lastAbsDmg > 0)
+                        this.recordDamage(mst);
+                }
+                if (!mst.isDead) {
+                    mst.applyDamage(this.FAtk * (1 - mst.armorResistance) * this.calculateDamageRatio(mst));
+                    this.recordDamage(mst);
+                }
             }
         });
     }
@@ -6387,13 +6432,14 @@ class ImageManager {
     }
     async loadImages() {
         const loadTasks = BITMAP_CONFIGS.map(({ name, url }) => {
-            const prom = new Promise(res => {
+            const prom = new Promise((res, rej) => {
                 const img = new Image();
                 img.onload = () => {
                     createImageBitmap(img).then(bitmap => {
                         res([name, bitmap]);
-                    });
+                    }).catch(err => rej(new Error(`Failed to create bitmap for ${name}: ${err}`)));
                 };
+                img.onerror = () => rej(new Error(`Failed to load image: ${name} (${url})`));
                 img.src = url;
             });
             return prom;
@@ -6405,14 +6451,15 @@ class ImageManager {
     }
     async loadSpriteSheets() {
         const loadTasks = SPRITE_SHEET_CONFIGS.map(({ name, url, x, y }) => {
-            const prom = new Promise(res => {
+            const prom = new Promise((res, rej) => {
                 const img = new Image();
                 img.onload = () => {
                     createImageBitmap(img).then(bitmap => {
                         const sprite = new AnimationSprite(bitmap, x, y);
                         res([name, sprite]);
-                    });
+                    }).catch(err => rej(new Error(`Failed to create sprite bitmap for ${name}: ${err}`)));
                 };
+                img.onerror = () => rej(new Error(`Failed to load sprite sheet: ${name} (${url})`));
                 img.src = url;
             });
             return prom;
@@ -6538,6 +6585,12 @@ class WaveManager {
         if (this._state === WaveState.RESTING) {
             if (this._rewardCallback) {
                 this._rewardCallback(WAVE_CONFIG.EARLY_START_GOLD_BONUS);
+            }
+            this._currentWaveIndex++;
+            if (this._currentWaveIndex >= this._waves.length) {
+                this._state = WaveState.COMPLETED;
+                console.log('[WaveManager] 所有波次已完成！');
+                return false;
             }
         }
         if (this._state === WaveState.WAITING_FOR_START || this._state === WaveState.RESTING) {
@@ -7128,6 +7181,7 @@ class GameRenderer {
         ctx.strokeStyle = 'rgba(45,45,45,.5)';
         ctx.lineWidth = 1;
         ctx.strokeRect(1, 1, config.leftAreaWidth, config.leftAreaHeight);
+        ctx.beginPath();
         ctx.strokeStyle = 'rgba(188,188,188,.1)';
         for (let i = config.gridSize; i < config.gridSize * config.gridRows; i += config.gridSize) {
             ctx.moveTo(1, i);
@@ -8222,6 +8276,13 @@ class Game extends Base {
         }
     }
     _spawnMonster(level, pos, ctorName) {
+        const gridInfo = this._pathfinder.getGridInfoAtPosition(pos, Infinity);
+        if (gridInfo) {
+            const isWalkable = this._grids[gridInfo.gridX]?.[gridInfo.gridY] === 1;
+            if (!isWalkable) {
+                pos = this._originPosition.copy();
+            }
+        }
         const ctor = MonsterRegistry.getOrThrow(ctorName);
         const { imgName, sprSpd } = ctor;
         this._monsterManager.Factory(ctorName, pos.dithering(this._gridSize / 3), imgName.indexOf('$spr::') !== -1 ? this._imageManager.getSprite(imgName.substr(6)).getClone(sprSpd || 1) : this._imageManager.getImage(imgName), level);
@@ -8263,6 +8324,8 @@ class Game extends Base {
         this.updateMoney(delta, _happenedPosition);
     }
     updateLife(delta) {
+        if (this._isGameOver)
+            return;
         this._life += delta;
         if (this._life <= 0) {
             this._life = 0;

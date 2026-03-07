@@ -349,6 +349,8 @@ class MonsterBase extends ItemBase {
   }
 
   run(path: PositionLike[], lifeTokenEmitter: typeof Game.prototype.emitLife, towers: TowerBase[], monsters: MonsterBase[]): void {
+    if (this.isDead) return
+
     this.runDebuffs()
 
     if (this.beShocked) this.runShock(monsters)
@@ -365,7 +367,9 @@ class MonsterBase extends ItemBase {
       this.position.moveTo(path[0]!, this.speedValue)
     }
 
-    this.makeEffect(towers, monsters)
+    if (!this.isDead) {
+      this.makeEffect(towers, monsters)
+    }
   }
 
   // ==================== 渲染方法 ====================

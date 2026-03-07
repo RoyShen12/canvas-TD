@@ -133,6 +133,7 @@ class GameRenderer {
     ctx.strokeRect(1, 1, config.leftAreaWidth, config.leftAreaHeight)
 
     // 绘制网格线
+    ctx.beginPath()
     ctx.strokeStyle = 'rgba(188,188,188,.1)'
     for (let i = config.gridSize; i < config.gridSize * config.gridRows; i += config.gridSize) {
       ctx.moveTo(1, i)

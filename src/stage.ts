@@ -256,6 +256,13 @@ class WaveManager {
       if (this._rewardCallback) {
         this._rewardCallback(WAVE_CONFIG.EARLY_START_GOLD_BONUS)
       }
+      // 推进到下一波（与自然休息结束逻辑一致）
+      this._currentWaveIndex++
+      if (this._currentWaveIndex >= this._waves.length) {
+        this._state = WaveState.COMPLETED
+        console.log('[WaveManager] 所有波次已完成！')
+        return false
+      }
     }
 
     if (this._state === WaveState.WAITING_FOR_START || this._state === WaveState.RESTING) {

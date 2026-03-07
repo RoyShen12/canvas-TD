@@ -101,8 +101,8 @@ abstract class TowerBase extends ItemBase {
   public target: Optional<MonsterBase> = null
 
   private _lastShootTime: number
-  private _totalDamage = 0
-  private _killCount = 0
+  protected _totalDamage = 0
+  protected _killCount = 0
 
   public gem: Optional<GemBase> = null
   public canInsertGem = true
@@ -261,6 +261,16 @@ abstract class TowerBase extends ItemBase {
   protected recordKill(): void {
     this._killCount++
     this.gameContext.getMoney()[1](this._killExtraGold)
+  }
+
+  /** 增加伤害统计（供子类转发使用） */
+  public addDamage(amount: number): void {
+    this._totalDamage += amount
+  }
+
+  /** 增加击杀统计（供子类转发使用） */
+  public addKill(): void {
+    this._killCount++
   }
 
   /** 记录伤害 */

@@ -70,7 +70,8 @@ class DOTManager {
         target.applyDamage(damage)
         damageEmitter(target)
       } else {
-        // 目标死亡，结束计时器
+        // 目标死亡，清除 debuff 标记，结束计时器
+        targetRecord[dotDebuffName] = false
         clearInterval(itv)
       }
     }, interval)

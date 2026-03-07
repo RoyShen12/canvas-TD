@@ -201,6 +201,34 @@ class _Jet extends TowerBase {
     }
   }
 
+  /** 记录伤害并转发给航母 */
+  override recordDamage(monster: MonsterBase): void {
+    const { lastAbsDmg, isDead, isBoss } = monster
+    // 将伤害统计转发给航母
+    if (this.carrierTower) {
+      this.carrierTower.addDamage(lastAbsDmg)
+    }
+    Game.updateGemPoint += TowerBase.damageToPoint(lastAbsDmg)
+
+    if (isDead) {
+      this.recordKill()
+      Game.updateGemPoint += (isBoss ? TowerBase.killBossPointEarnings : TowerBase.killNormalPointEarnings) + this._killExtraPoint
+
+      if (this.carrierTower?.gem) {
+        this.carrierTower.gem.killHook(this.carrierTower, monster)
+      }
+    }
+  }
+
+  /** 记录击杀并转发给航母 */
+  protected override recordKill(): void {
+    if (this.carrierTower) {
+      this.carrierTower.addKill()
+    }
+    // 击杀额外金币通过全局上下文获取
+    this.gameContext.getMoney()[1](this._killExtraGold)
+  }
+
   /**
    * 在怪物中重选目标
    * 找到威胁最大的(距离终点最近的)
