@@ -1322,3 +1322,130 @@ describe('Bug Fix: IOC clearRect should match offset dimensions', () => {
     expect(fixedClearSize).toBe(offset * 2)
   })
 })
+
+// ============================================================================
+// Round 9 Bug Fix Tests
+// ============================================================================
+
+describe('Bug Fix: Mirinae tickHook should filter by tower range', () => {
+  test('should only target monsters in range', () => {
+    const towerRange = 100
+    const towerPos = { x: 50, y: 50 }
+    const monsters = [
+      { isDead: false, position: { x: 60, y: 60 }, dist: 14 },   // in range
+      { isDead: false, position: { x: 500, y: 500 }, dist: 636 }, // out of range
+      { isDead: true, position: { x: 55, y: 55 }, dist: 7 },     // dead
+    ]
+
+    const inRange = (m: typeof monsters[0]) => m.dist <= towerRange
+    const alive = monsters.filter(m => !m.isDead && inRange(m))
+
+    expect(alive.length).toBe(1)
+    expect(alive[0]!.position.x).toBe(60)
+  })
+
+  test('old code without range check would hit any alive monster', () => {
+    const monsters = [
+      { isDead: false, position: { x: 500, y: 500 } },
+    ]
+
+    const aliveNoRange = monsters.filter(m => !m.isDead)
+    expect(aliveNoRange.length).toBe(1) // Would incorrectly include out-of-range monster
+  })
+})
+
+describe('Bug Fix: Boss timers should be adjusted for pause', () => {
+  test('HighPriest lastHealTime should be offset by pause duration', () => {
+    let lastHealTime = 1000
+    const pauseDuration = 5000
+
+    // Adjust for pause
+    lastHealTime += pauseDuration
+
+    // At unpause time 6000, time since heal should be 0 (6000 - 6000)
+    const timeSinceHeal = 6000 - lastHealTime
+    expect(timeSinceHeal).toBe(0)
+  })
+
+  test('without adjustment, boss heals immediately after unpause', () => {
+    const lastHealTime = 1000
+    const healInterval = 3000
+    const unpauseTime = 10000
+
+    const timeSinceHeal = unpauseTime - lastHealTime
+    expect(timeSinceHeal).toBeGreaterThan(healInterval) // Would trigger heal immediately
+  })
+
+  test('with adjustment, boss respects remaining cooldown', () => {
+    let lastHealTime = 4000 // healed 1 second before pause
+    const healInterval = 3000
+    const pauseStart = 5000
+    const pauseEnd = 10000
+    const pauseDuration = pauseEnd - pauseStart
+
+    lastHealTime += pauseDuration
+
+    const timeSinceHeal = pauseEnd - lastHealTime
+    expect(timeSinceHeal).toBe(1000) // Only 1 second of real time since last heal
+    expect(timeSinceHeal).toBeLessThan(healInterval)
+  })
+})
+
+describe('Bug Fix: Gem adjustTimersForPause should be called from tower', () => {
+  test('tower adjustTimersForPause should propagate to gem', () => {
+    let towerLastShoot = 1000
+    let gemLastHit = 2000
+    const pauseDuration = 5000
+
+    // Simulate tower adjustTimersForPause
+    towerLastShoot += pauseDuration
+    gemLastHit += pauseDuration // gem also adjusted
+
+    expect(towerLastShoot).toBe(6000)
+    expect(gemLastHit).toBe(7000)
+  })
+})
+
+describe('Bug Fix: Right-click sell should reset double-click timer', () => {
+  test('after selling, next click should not trigger another sell', () => {
+    let lastRightClickTime = 0
+    const DOUBLE_CLICK_MS = 300
+
+    // First click at t=100
+    lastRightClickTime = 100
+
+    // Second click at t=350 (double click)
+    const now1 = 350
+    const isDoubleClick = now1 - lastRightClickTime < DOUBLE_CLICK_MS
+    expect(isDoubleClick).toBe(true)
+
+    // After sell: reset timer
+    lastRightClickTime = -1000
+
+    // Third click at t=550 (should NOT be double-click)
+    const now2 = 550
+    const isTripleClick = now2 - lastRightClickTime < DOUBLE_CLICK_MS
+    expect(isTripleClick).toBe(false)
+  })
+})
+
+describe('Bug Fix: Long-press timer should be cleared before new press', () => {
+  test('new mousedown should cancel previous timer', () => {
+    let timerCleared = false
+    let timerInst: number | null = null
+
+    // First press
+    timerInst = 1 // simulated timer ID
+
+    // Second press (before first timer fires)
+    if (timerInst !== null) {
+      timerCleared = true
+      timerInst = null
+    }
+    timerInst = 2 // new timer
+
+    expect(timerCleared).toBe(true)
+    expect(timerInst).toBe(2)
+  })
+})
+

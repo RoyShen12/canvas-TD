@@ -356,6 +356,9 @@ abstract class TowerBase extends ItemBase {
    */
   adjustTimersForPause(pauseDuration: number): void {
     this._lastShootTime += pauseDuration
+    if (this.gem) {
+      this.gem.adjustTimersForPause(pauseDuration)
+    }
   }
 
   run(monsters: MonsterBase[]): void {

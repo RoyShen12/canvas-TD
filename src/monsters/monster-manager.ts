@@ -107,4 +107,13 @@ class MonsterManager {
   get maxLevel(): number {
     return this.monsters.length > 0 ? _.maxBy(this.monsters, m => m.level)!.level : 0
   }
+
+  /**
+   * 暂停后调整所有怪物的计时器
+   */
+  adjustTimersForPause(pauseDuration: number): void {
+    for (const monster of this.monsters) {
+      monster.adjustTimersForPause(pauseDuration)
+    }
+  }
 }

@@ -150,6 +150,11 @@ class DomUtils {
     }
 
     node.onmousedown = () => {
+      // 清除上一次可能残留的定时器
+      if (timerInst !== null) {
+        clearTimeout(timerInst)
+        timerInst = null
+      }
       timerInst = setTimeout(() => {
         const startLevel1 = performance.now()
 

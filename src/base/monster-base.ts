@@ -507,4 +507,10 @@ class MonsterBase extends ItemBase {
     // 清理 debuff 管理器中的数据
     debuffManager.clearEntity(this.id)
   }
+
+  /**
+   * 暂停后调整计时器，将暂停期间的时间排除
+   * 子类可重载此方法以调整自定义计时器
+   */
+  adjustTimersForPause(_pauseDuration: number): void {}
 }

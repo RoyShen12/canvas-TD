@@ -127,6 +127,9 @@ abstract class GemBase {
   /** 每个 Tick 都会触发 (注意性能) */
   tickHook(_thisTower: TowerBase, _monsters: MonsterBase[]): void {}
 
+  /** 暂停后调整计时器 */
+  adjustTimersForPause(_pauseDuration: number): void {}
+
   /** @todo @unimplemented */
   damageHook(_thisTower: TowerBase, _monster: MonsterBase, _damage: number): void {}
 }
@@ -329,11 +332,15 @@ class MirinaeTeardropOfTheStarweaver extends GemBase {
 
   override tickHook(thisTower: TowerBase, monsters: MonsterBase[]) {
     if (!this.canHit) return
-    const alive = monsters.filter(m => !m.isDead)
+    const alive = monsters.filter(m => !m.isDead && thisTower.inRange(m))
     if (alive.length === 0) return
     const t = randomElement(alive)
     this.chit(thisTower, t)
     this.lastHitTime = performance.now()
+  }
+
+  override adjustTimersForPause(pauseDuration: number): void {
+    this.lastHitTime += pauseDuration
   }
 }
 

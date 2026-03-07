@@ -419,10 +419,11 @@ class Game extends Base {
     if (v && !this._isPausing) {
       this._pauseStartTime = performance.now()
     }
-    // 解除暂停：调整所有塔的冷却计时器
+    // 解除暂停：调整所有塔和怪物的冷却计时器
     if (!v && this._isPausing && this._pauseStartTime > 0) {
       const pauseDuration = performance.now() - this._pauseStartTime
       this._towerManager.adjustTimersForPause(pauseDuration)
+      this._monsterManager.adjustTimersForPause(pauseDuration)
     }
 
     this._isPausing = v

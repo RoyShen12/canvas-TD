@@ -610,6 +610,10 @@ class DomUtils {
             this._instance.set(uniqueId, null);
         }
         node.onmousedown = () => {
+            if (timerInst !== null) {
+                clearTimeout(timerInst);
+                timerInst = null;
+            }
             timerInst = setTimeout(() => {
                 const startLevel1 = performance.now();
                 const intervalInst = setInterval(() => {
@@ -1539,6 +1543,7 @@ class GemBase {
     hitHook(_thisTower, _monster, _monsters) { }
     killHook(_thisTower, _monster) { }
     tickHook(_thisTower, _monsters) { }
+    adjustTimersForPause(_pauseDuration) { }
     damageHook(_thisTower, _monster, _damage) { }
 }
 class PainEnhancer extends GemBase {
@@ -1688,12 +1693,15 @@ class MirinaeTeardropOfTheStarweaver extends GemBase {
     tickHook(thisTower, monsters) {
         if (!this.canHit)
             return;
-        const alive = monsters.filter(m => !m.isDead);
+        const alive = monsters.filter(m => !m.isDead && thisTower.inRange(m));
         if (alive.length === 0)
             return;
         const t = randomElement(alive);
         this.chit(thisTower, t);
         this.lastHitTime = performance.now();
+    }
+    adjustTimersForPause(pauseDuration) {
+        this.lastHitTime += pauseDuration;
     }
 }
 class BaneOfTheStricken extends GemBase {
@@ -2690,6 +2698,9 @@ class TowerBase extends ItemBase {
     }
     adjustTimersForPause(pauseDuration) {
         this._lastShootTime += pauseDuration;
+        if (this.gem) {
+            this.gem.adjustTimersForPause(pauseDuration);
+        }
     }
     run(monsters) {
         if (this.canShoot) {
@@ -3158,6 +3169,7 @@ class MonsterBase extends ItemBase {
         super.destroy();
         debuffManager.clearEntity(this.id);
     }
+    adjustTimersForPause(_pauseDuration) { }
 }
 class BulletBase extends ItemBase {
     Atk;
@@ -3903,6 +3915,11 @@ class MonsterManager {
     get maxLevel() {
         return this.monsters.length > 0 ? _.maxBy(this.monsters, m => m.level).level : 0;
     }
+    adjustTimersForPause(pauseDuration) {
+        for (const monster of this.monsters) {
+            monster.adjustTimersForPause(pauseDuration);
+        }
+    }
 }
 class Dummy extends MonsterBase {
     static imgName = '$spr::m_spider';
@@ -4037,6 +4054,9 @@ class HighPriest extends MonsterBase {
             this._currentHealInterval = this._rollHealInterval();
         }
     }
+    adjustTimersForPause(pauseDuration) {
+        this.lastHealTime += pauseDuration;
+    }
 }
 class Devil extends MonsterBase {
     static imgName = '$spr::m_devil';
@@ -4079,6 +4099,9 @@ class Devil extends MonsterBase {
             const spawnPos = new Position(this.position.x + _.random(-offsetRange, offsetRange), this.position.y + _.random(-offsetRange, offsetRange));
             Game.callMonsterSpawn('DemonSpawn', spawnPos, this._level);
         }
+    }
+    adjustTimersForPause(pauseDuration) {
+        this.lastSummonTime += pauseDuration;
     }
 }
 MonsterRegistry.register('Dummy', Dummy);
@@ -7453,6 +7476,8 @@ class GameEventHandler {
                 if (selectedT) {
                     onRemoveTower(selectedT);
                     GameUIManager.showToast(`已出售 ${selectedT.name || '塔'}，回收 ${selectedT.sellingPrice} 金币`, 'success');
+                    this._lastRightClickTime = -1000;
+                    return;
                 }
             }
         }
@@ -7486,6 +7511,7 @@ class GameEventHandler {
                         ctx.strokeStyle = 'rgba(64, 158, 255, 0.5)';
                         ctx.lineWidth = 1;
                         ctx.strokeRect(gridInfo.centerX - gridSize / 2, gridInfo.centerY - gridSize / 2, gridSize, gridSize);
+                        ctx.save();
                         ctx.globalAlpha = 0.5;
                         ctx.beginPath();
                         ctx.arc(snapPos.x, snapPos.y, gridSize / 2 - 2, 0, Math.PI * 2);
@@ -7494,7 +7520,7 @@ class GameEventHandler {
                         ctx.strokeStyle = 'rgba(64, 158, 255, 0.8)';
                         ctx.lineWidth = 2;
                         ctx.stroke();
-                        ctx.globalAlpha = 1;
+                        ctx.restore();
                         TowerBase.prototype.renderRange.call({ position: snapPos, Rng: this._selectedTowerTypeToBuild.__rng_lv0 }, mouseCtx);
                     }
                 }
@@ -8153,6 +8179,7 @@ class Game extends Base {
         if (!v && this._isPausing && this._pauseStartTime > 0) {
             const pauseDuration = performance.now() - this._pauseStartTime;
             this._towerManager.adjustTimersForPause(pauseDuration);
+            this._monsterManager.adjustTimersForPause(pauseDuration);
         }
         this._isPausing = v;
         if (v && !this._isGameOver && !this._isVictory && this._bornStamp) {

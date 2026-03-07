@@ -145,6 +145,9 @@ class GameEventHandler {
         if (selectedT) {
           onRemoveTower(selectedT)
           GameUIManager.showToast(`已出售 ${selectedT.name || '塔'}，回收 ${selectedT.sellingPrice} 金币`, 'success')
+          // 重置双击计时器，防止连续快速卖出
+          this._lastRightClickTime = -1000
+          return
         }
       }
     } else {
@@ -209,6 +212,7 @@ class GameEventHandler {
             )
 
             // 绘制幽灵塔（半透明圆形）
+            ctx.save()
             ctx.globalAlpha = 0.5
             ctx.beginPath()
             ctx.arc(snapPos.x, snapPos.y, gridSize / 2 - 2, 0, Math.PI * 2)
@@ -217,7 +221,7 @@ class GameEventHandler {
             ctx.strokeStyle = 'rgba(64, 158, 255, 0.8)'
             ctx.lineWidth = 2
             ctx.stroke()
-            ctx.globalAlpha = 1
+            ctx.restore()
 
             // 绘制射程圈
             TowerBase.prototype.renderRange.call(

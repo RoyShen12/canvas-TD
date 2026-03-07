@@ -87,4 +87,8 @@ class Devil extends MonsterBase {
       Game.callMonsterSpawn('DemonSpawn', spawnPos, this._level)
     }
   }
+
+  override adjustTimersForPause(pauseDuration: number): void {
+    this.lastSummonTime += pauseDuration
+  }
 }

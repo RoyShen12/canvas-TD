@@ -120,4 +120,8 @@ class HighPriest extends MonsterBase {
       this._currentHealInterval = this._rollHealInterval()
     }
   }
+
+  override adjustTimersForPause(pauseDuration: number): void {
+    this.lastHealTime += pauseDuration
+  }
 }
