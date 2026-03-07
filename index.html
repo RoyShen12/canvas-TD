@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <link href="dist/global.css" rel="stylesheet" type="text/css">
-  <title>TD</title>
+  <title>Tower Defense - 塔防战争</title>
   <script type="text/javascript" src="dist/mainloop.min.js"></script>
   <script type="text/javascript" src="dist/lodash.min.js"></script>
   <script type="text/javascript">
@@ -26,11 +26,69 @@
         <circle cx="50" cy="50" r="20" fill="none" class="path"></circle>
         <p id="loading_text" class="el-loading-text">拼命加载中</p>
       </svg>
-      <!---->
+      <div class="loading-progress-container">
+        <div id="loading_progress" class="loading-progress-bar"></div>
+      </div>
     </div>
   </div>
   <div id="status_block" class="bar" style="display: none;"></div>
   <div id="gem_block" class="bar bar2" style="display: none;"></div>
+  <!-- 波次系统 UI -->
+  <div id="wave_panel" class="wave-panel" style="display: none;">
+    <div class="wave-info">
+      <span id="wave_number">第 1 波</span>
+      <span id="wave_total">/ 10</span>
+    </div>
+    <div class="wave-progress-container">
+      <div id="wave_progress_bar" class="wave-progress-bar"></div>
+    </div>
+    <div id="wave_rest_timer" class="wave-rest-timer"></div>
+    <button id="wave_start_btn" class="wave-btn">开始第 1 波</button>
+    <label class="wave-auto-label">
+      <input type="checkbox" id="wave_auto_start" />
+      自动开始下一波
+    </label>
+  </div>
+  <!-- 暂停覆盖层 -->
+  <div id="pause_overlay" class="game-overlay" style="display: none;">
+    <div class="overlay-content">
+      <div class="overlay-title">游戏暂停</div>
+      <div class="overlay-subtitle">按 空格键 或点击继续按钮恢复游戏</div>
+      <button id="resume_btn" class="overlay-btn overlay-btn-primary">继续游戏</button>
+    </div>
+  </div>
+  <!-- 游戏结束覆盖层 -->
+  <div id="gameover_overlay" class="game-overlay" style="display: none;">
+    <div class="overlay-content">
+      <div class="overlay-title gameover-title">防线崩溃</div>
+      <div class="overlay-stats" id="gameover_stats"></div>
+      <button id="restart_btn" class="overlay-btn overlay-btn-danger">重新开始</button>
+    </div>
+  </div>
+  <!-- 胜利覆盖层 -->
+  <div id="victory_overlay" class="game-overlay" style="display: none;">
+    <div class="overlay-content">
+      <div class="overlay-title victory-title">胜利！</div>
+      <div class="overlay-subtitle">所有波次已通过</div>
+      <div class="overlay-stats" id="victory_stats"></div>
+      <button id="endless_btn" class="overlay-btn overlay-btn-primary">进入无尽模式</button>
+      <button id="victory_restart_btn" class="overlay-btn overlay-btn-secondary">重新开始</button>
+    </div>
+  </div>
+  <!-- Toast 提示容器 -->
+  <div id="toast_container" class="toast-container"></div>
+  <!-- 快捷键帮助面板 -->
+  <div id="help_panel" class="help-panel" style="display: none;">
+    <div class="help-title">快捷键帮助 <span class="help-close">[H] 关闭</span></div>
+    <div class="help-grid">
+      <div class="help-key"><kbd>空格</kbd> 暂停/继续</div>
+      <div class="help-key"><kbd>1-9</kbd> 选择塔类型</div>
+      <div class="help-key"><kbd>C</kbd> 在鼠标位置建塔</div>
+      <div class="help-key"><kbd>右键x2</kbd> 出售塔</div>
+      <div class="help-key"><kbd>Ctrl</kbd> 切换详细信息</div>
+      <div class="help-key"><kbd>H</kbd> 帮助面板</div>
+    </div>
+  </div>
 </body>
 
 </html>
