@@ -159,14 +159,20 @@ class _TowerManager {
    * 获取所有塔的总伤害
    */
   get totalDamage(): number {
-    return this.towers.concat(this.independentTowers).reduce((sum, tower) => sum + tower.totalDamage, 0)
+    let sum = 0
+    for (const t of this.towers) sum += t.totalDamage
+    for (const t of this.independentTowers) sum += t.totalDamage
+    return sum
   }
 
   /**
    * 获取所有塔的总击杀数
    */
   get totalKill(): number {
-    return this.towers.concat(this.independentTowers).reduce((sum, tower) => sum + tower.killCount, 0)
+    let sum = 0
+    for (const t of this.towers) sum += t.killCount
+    for (const t of this.independentTowers) sum += t.killCount
+    return sum
   }
 }
 

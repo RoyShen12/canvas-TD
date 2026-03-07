@@ -819,9 +819,7 @@ class DOTManager {
     }
 }
 class Position {
-    static get ORIGIN() {
-        return new Position(0, 0);
-    }
+    static ORIGIN = Object.freeze(new Position(0, 0));
     static distancePow2(a, b) {
         return (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
     }
@@ -913,9 +911,7 @@ class PolarVector {
     }
 }
 class Vector extends Position {
-    static get zero() {
-        return new Vector(0, 0);
-    }
+    static zero = Object.freeze(new Vector(0, 0));
     static unit(x, y) {
         const len = Math.sqrt(x * x + y * y);
         if (len === 0) {
@@ -2341,20 +2337,16 @@ class AnimationSprite extends Base {
         }
     }
     render(ctx, positionTL, width, height, delay = 0, callback) {
-        if (this.nextFrameIndex !== 0 && this.realNextFrameIndex !== this.totalFrame) {
-            if (this.lastRAF)
-                cancelAnimationFrame(this.lastRAF);
-        }
+        if (this.lastRAF)
+            cancelAnimationFrame(this.lastRAF);
         this.nextFrameIndex = 0;
         this.lastRAF = requestAnimationFrame(() => {
             this.renderOneFrame(ctx, positionTL, width, height, delay, false, false, true, callback);
         });
     }
     renderLoop(ctx, positionTL, width, height, trusteeShippedClearing = false) {
-        if (this.nextFrameIndex !== 0 && this.realNextFrameIndex !== this.totalFrame) {
-            if (this.lastRAF)
-                cancelAnimationFrame(this.lastRAF);
-        }
+        if (this.lastRAF)
+            cancelAnimationFrame(this.lastRAF);
         this.nextFrameIndex = 0;
         this.lastRAF = requestAnimationFrame(() => {
             this.renderOneFrame(ctx, positionTL, width, height, 0, true, trusteeShippedClearing, true);
@@ -4537,10 +4529,20 @@ class _TowerManager {
         return needRender;
     }
     get totalDamage() {
-        return this.towers.concat(this.independentTowers).reduce((sum, tower) => sum + tower.totalDamage, 0);
+        let sum = 0;
+        for (const t of this.towers)
+            sum += t.totalDamage;
+        for (const t of this.independentTowers)
+            sum += t.totalDamage;
+        return sum;
     }
     get totalKill() {
-        return this.towers.concat(this.independentTowers).reduce((sum, tower) => sum + tower.killCount, 0);
+        let sum = 0;
+        for (const t of this.towers)
+            sum += t.killCount;
+        for (const t of this.independentTowers)
+            sum += t.killCount;
+        return sum;
     }
 }
 const TowerManager = new Proxy(_TowerManager, {
@@ -5950,7 +5952,7 @@ class TeslaTower extends TowerBase {
         const ratio = this.calculateDamageRatio(monster);
         monster.applyDamage(this.Atk * (1 - monster.armorResistance) * ratio);
         this.recordDamage(monster);
-        if (this.canCharge) {
+        if (this.canCharge && !monster.isDead) {
             monster.registerShock(this.shockDurationTick, this.Atk * ratio * this.shockChargingPowerRatio, this, this.shockLeakingChance);
         }
     }
@@ -8172,7 +8174,8 @@ class Game extends Base {
         Game.callGridSideSize = () => this._gridSize;
         this._leftAreaHeight = this._gridSize * this._gridRows;
         this._leftAreaWidth = (this._leftAreaHeight * this._gridColumns) / this._gridRows;
-        Game.callBoundaryPosition = () => new Position(this._leftAreaWidth, this._leftAreaHeight);
+        const boundaryPos = Object.freeze(new Position(this._leftAreaWidth, this._leftAreaHeight));
+        Game.callBoundaryPosition = () => boundaryPos;
         const diagonalLength = Math.sqrt(this._leftAreaWidth ** 2 + this._leftAreaHeight ** 2);
         Game.callDiagonalLength = () => diagonalLength;
         this._midSplitLineX = this._leftAreaWidth + 2;

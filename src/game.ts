@@ -506,7 +506,8 @@ class Game extends Base {
     this._leftAreaHeight = this._gridSize * this._gridRows
     this._leftAreaWidth = (this._leftAreaHeight * this._gridColumns) / this._gridRows
 
-    Game.callBoundaryPosition = () => new Position(this._leftAreaWidth, this._leftAreaHeight)
+    const boundaryPos = Object.freeze(new Position(this._leftAreaWidth, this._leftAreaHeight))
+    Game.callBoundaryPosition = () => boundaryPos as Position
 
     const diagonalLength = Math.sqrt(this._leftAreaWidth ** 2 + this._leftAreaHeight ** 2)
     Game.callDiagonalLength = () => diagonalLength

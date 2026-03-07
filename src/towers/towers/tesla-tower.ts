@@ -160,7 +160,7 @@ class TeslaTower extends TowerBase {
     monster.applyDamage(this.Atk * (1 - monster.armorResistance) * ratio)
     this.recordDamage(monster)
 
-    if (this.canCharge) {
+    if (this.canCharge && !monster.isDead) {
       monster.registerShock(this.shockDurationTick, this.Atk * ratio * this.shockChargingPowerRatio, this, this.shockLeakingChance)
     }
   }

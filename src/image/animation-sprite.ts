@@ -109,12 +109,8 @@ class AnimationSprite extends Base {
     delay: number = 0,
     callback?: CallableFunction
   ): void {
-    // BUG FIX: Changed || to && to correctly check if animation is in progress
-    // Original: this.realNextFrameIndex !== 0 || this.realNextFrameIndex !== this.totalFrame (always true)
-    // Fixed: Check if animation is actively playing (not at start AND not at end)
-    if (this.nextFrameIndex !== 0 && this.realNextFrameIndex !== this.totalFrame) {
-      if (this.lastRAF) cancelAnimationFrame(this.lastRAF)
-    }
+    // 取消之前的动画帧，防止并发 RAF 循环
+    if (this.lastRAF) cancelAnimationFrame(this.lastRAF)
 
     this.nextFrameIndex = 0
 
@@ -134,10 +130,8 @@ class AnimationSprite extends Base {
     height: number,
     trusteeShippedClearing: boolean = false
   ): void {
-    // BUG FIX: Same fix as render() method
-    if (this.nextFrameIndex !== 0 && this.realNextFrameIndex !== this.totalFrame) {
-      if (this.lastRAF) cancelAnimationFrame(this.lastRAF)
-    }
+    // 取消之前的动画帧，防止并发 RAF 循环
+    if (this.lastRAF) cancelAnimationFrame(this.lastRAF)
 
     this.nextFrameIndex = 0
 
