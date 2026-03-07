@@ -322,7 +322,7 @@ abstract class TowerBase extends ItemBase {
   /** 在怪物中重选目标 */
   reChooseTarget(targetList: MonsterBase[], _index?: number): void {
     for (const t of _.shuffle(targetList)) {
-      if (this.inRange(t)) {
+      if (!t.isDead && this.inRange(t)) {
         this.target = t
         return
       }

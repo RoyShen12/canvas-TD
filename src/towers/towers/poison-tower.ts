@@ -79,7 +79,8 @@ class PoisonTower extends TowerBase {
    * 毒罐塔特有的索敌方式
    */
   override reChooseTarget(targetList: MonsterBase[]): void {
-    const unPoisoned = targetList.filter(m => !m.bePoisoned)
+    const aliveTargets = targetList.filter(m => !m.isDead)
+    const unPoisoned = aliveTargets.filter(m => !m.bePoisoned)
 
     // 先在未中毒，且未被任何本类型塔弹药锁定的敌人中快速搜索
     const unTargeted = unPoisoned.filter(m => {
@@ -103,7 +104,7 @@ class PoisonTower extends TowerBase {
 
     // 如果未找到在射程内的未中毒的敌人
     // 则回退到全部敌人中随机寻找一个在射程内的敌人
-    for (const t of _.shuffle(targetList)) {
+    for (const t of _.shuffle(aliveTargets)) {
       if (this.inRange(t)) {
         this.target = t
         return

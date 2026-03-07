@@ -125,9 +125,9 @@ class BlackMagicTower extends TowerBase {
 
   override reChooseTarget(targetList: MonsterBase[]): void {
     this.target = _.maxBy(
-      targetList.filter(t => this.inRange(t)),
+      targetList.filter(t => !t.isDead && this.inRange(t)),
       m => m.health
-    )
+    ) ?? null
   }
 
   override produceBullet(): void {

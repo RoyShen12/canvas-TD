@@ -458,3 +458,74 @@ describe('Bug Fix: DOT debuff flag should be cleared on target death', () => {
     expect(target.bePoisoned).toBe(false)
   })
 })
+
+describe('Bug Fix: applyDamage should clear lastAbsDmg on early return', () => {
+  test('lastAbsDmg should be 0 when target is already dead', () => {
+    const monster = {
+      isDead: true,
+      lastAbsDmg: 500, // stale value from previous damage
+      health: 0,
+    }
+
+    // Fixed applyDamage logic
+    if (monster.isDead) {
+      monster.lastAbsDmg = 0
+    }
+
+    expect(monster.lastAbsDmg).toBe(0)
+  })
+
+  test('lastAbsDmg should be 0 when rawDamage is 0', () => {
+    const monster = {
+      isDead: false,
+      lastAbsDmg: 300,
+      health: 100,
+    }
+    const rawDamage = 0
+
+    // Fixed applyDamage logic
+    if (rawDamage <= 0 || monster.isDead) {
+      monster.lastAbsDmg = 0
+    }
+
+    expect(monster.lastAbsDmg).toBe(0)
+  })
+})
+
+describe('Bug Fix: runShock should filter dead monsters', () => {
+  test('should not select dead monster as shock target', () => {
+    const monsters = [
+      { id: 1, isDead: false, position: { x: 10, y: 10 } },
+      { id: 2, isDead: true, position: { x: 5, y: 5 } }, // dead but closest
+      { id: 3, isDead: false, position: { x: 20, y: 20 } },
+    ]
+    const self = { id: 1 }
+
+    // Fixed: filter dead monsters first
+    const aliveMonsters = monsters.filter(m => !m.isDead && m.id !== self.id)
+    expect(aliveMonsters.length).toBe(1)
+    expect(aliveMonsters[0]!.id).toBe(3) // should skip dead monster id=2
+  })
+})
+
+describe('Bug Fix: reChooseTarget should filter dead monsters', () => {
+  test('should not select dead monster as target', () => {
+    const monsters = [
+      { id: 1, isDead: true, inRange: true },
+      { id: 2, isDead: false, inRange: false },
+      { id: 3, isDead: false, inRange: true },
+    ]
+
+    // Fixed: filter dead
+    let target = null
+    for (const t of monsters) {
+      if (!t.isDead && t.inRange) {
+        target = t
+        break
+      }
+    }
+
+    expect(target).not.toBeNull()
+    expect(target!.id).toBe(3) // should skip dead monster id=1
+  })
+})

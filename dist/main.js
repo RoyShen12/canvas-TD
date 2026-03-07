@@ -2669,7 +2669,7 @@ class TowerBase extends ItemBase {
     }
     reChooseTarget(targetList, _index) {
         for (const t of _.shuffle(targetList)) {
-            if (this.inRange(t)) {
+            if (!t.isDead && this.inRange(t)) {
                 this.target = t;
                 return;
             }
@@ -2927,8 +2927,10 @@ class MonsterBase extends ItemBase {
         return this._level;
     }
     applyDamage(rawDamage) {
-        if (rawDamage <= 0 || this.isDead)
+        if (rawDamage <= 0 || this.isDead) {
+            this.lastAbsDmg = 0;
             return 0;
+        }
         const curseMultiplier = this.imprecatedRatio.reduce((p, v) => p * v.pow, 1);
         const actualDmg = Math.round(rawDamage * curseMultiplier);
         this.lastAbsDmg = Math.min(actualDmg, this._health);
@@ -3008,11 +3010,10 @@ class MonsterBase extends ItemBase {
     runShock(monsters) {
         if (Math.random() < 1 - this.shockLeakChance)
             return;
-        if (monsters.length < 2)
+        const aliveMonsters = monsters.filter(m => !m.isDead && m !== this);
+        if (aliveMonsters.length < 1)
             return;
-        const aim = _.minBy(monsters, mst => {
-            if (mst === this)
-                return Infinity;
+        const aim = _.minBy(aliveMonsters, mst => {
             return Position.distancePow2(mst.position, this.position);
         });
         if (aim && this.shockSource) {
@@ -3032,6 +3033,8 @@ class MonsterBase extends ItemBase {
         this.runDebuffs();
         if (this.beShocked)
             this.runShock(monsters);
+        if (this.isDead)
+            return;
         if (this.beImprisoned || this.beFrozen) {
             void 0;
         }
@@ -5210,9 +5213,9 @@ class _Jet extends TowerBase {
         this.gameContext.getMoney()[1](this._killExtraGold);
     }
     reChooseMostThreateningTarget(targetList) {
-        this.target = _.minBy(targetList, mst => {
+        this.target = _.minBy(targetList.filter(m => !m.isDead), mst => {
             return Position.distancePow2(Game.callDestinationPosition(), mst.position);
-        });
+        }) ?? null;
     }
     autonomouslyRun(monsters) {
         if (!this.hasCurrentTarget) {
@@ -5585,7 +5588,7 @@ class MaskManTower extends TowerBase {
     }
     reChooseTarget(targetList, index) {
         for (const t of _.shuffle(targetList)) {
-            if (this.inRange(t)) {
+            if (!t.isDead && this.inRange(t)) {
                 this.multipleTarget[index] = t;
                 return;
             }
@@ -5786,7 +5789,8 @@ class PoisonTower extends TowerBase {
         ]);
     }
     reChooseTarget(targetList) {
-        const unPoisoned = targetList.filter(m => !m.bePoisoned);
+        const aliveTargets = targetList.filter(m => !m.isDead);
+        const unPoisoned = aliveTargets.filter(m => !m.bePoisoned);
         const unTargeted = unPoisoned.filter(m => {
             return !this.bulletCtl.bullets.some(b => b.constructor.name === this.bulletCtorName && b.target === m);
         });
@@ -5802,7 +5806,7 @@ class PoisonTower extends TowerBase {
                 return;
             }
         }
-        for (const t of _.shuffle(targetList)) {
+        for (const t of _.shuffle(aliveTargets)) {
             if (this.inRange(t)) {
                 this.target = t;
                 return;
@@ -6044,7 +6048,7 @@ class BlackMagicTower extends TowerBase {
         return ret;
     }
     reChooseTarget(targetList) {
-        this.target = _.maxBy(targetList.filter(t => this.inRange(t)), m => m.health);
+        this.target = _.maxBy(targetList.filter(t => !t.isDead && this.inRange(t)), m => m.health) ?? null;
     }
     produceBullet() {
         if (this.target) {

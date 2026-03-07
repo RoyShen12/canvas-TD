@@ -227,7 +227,7 @@ class MaskManTower extends TowerBase {
 
   override reChooseTarget(targetList: MonsterBase[], index: number): void {
     for (const t of _.shuffle(targetList)) {
-      if (this.inRange(t)) {
+      if (!t.isDead && this.inRange(t)) {
         this.multipleTarget[index] = t
         return
       }

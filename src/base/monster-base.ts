@@ -209,7 +209,10 @@ class MonsterBase extends ItemBase {
    * @returns 实际造成的伤害
    */
   applyDamage(rawDamage: number): number {
-    if (rawDamage <= 0 || this.isDead) return 0
+    if (rawDamage <= 0 || this.isDead) {
+      this.lastAbsDmg = 0
+      return 0
+    }
 
     // 计算诅咒倍率
     const curseMultiplier = this.imprecatedRatio.reduce((p, v) => p * v.pow, 1)
@@ -328,10 +331,11 @@ class MonsterBase extends ItemBase {
 
   runShock(monsters: MonsterBase[]): void {
     if (Math.random() < 1 - this.shockLeakChance) return
-    if (monsters.length < 2) return
 
-    const aim = _.minBy(monsters, mst => {
-      if (mst === this) return Infinity
+    const aliveMonsters = monsters.filter(m => !m.isDead && m !== this)
+    if (aliveMonsters.length < 1) return
+
+    const aim = _.minBy(aliveMonsters, mst => {
       return Position.distancePow2(mst.position, this.position)
     })
 
@@ -354,6 +358,7 @@ class MonsterBase extends ItemBase {
     this.runDebuffs()
 
     if (this.beShocked) this.runShock(monsters)
+    if (this.isDead) return // 电击自伤可能导致自身死亡
 
     if (this.beImprisoned || this.beFrozen) {
       // 被禁锢、冻结，无法行动

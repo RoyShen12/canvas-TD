@@ -234,9 +234,9 @@ class _Jet extends TowerBase {
    * 找到威胁最大的(距离终点最近的)
    */
   reChooseMostThreateningTarget(targetList: MonsterBase[]): void {
-    this.target = _.minBy(targetList, mst => {
+    this.target = _.minBy(targetList.filter(m => !m.isDead), mst => {
       return Position.distancePow2(Game.callDestinationPosition(), mst.position)
-    })
+    }) ?? null
   }
 
   /**
