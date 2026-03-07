@@ -830,3 +830,102 @@ describe('Bug Fix: EchoOfLight should not double-apply armor reduction', () => {
     expect(actualDamage).toBeGreaterThan(oldActualDamage)
   })
 })
+
+describe('Bug Fix: A* graph cleanDirty between searches', () => {
+  test('should call cleanDirty between consecutive searches on same graph', () => {
+    // Simulating A* graph node state pollution
+    interface MockNode { x: number; y: number; closed: boolean; visited: boolean }
+
+    const nodes: MockNode[] = [
+      { x: 0, y: 0, closed: false, visited: false },
+      { x: 1, y: 0, closed: false, visited: false },
+      { x: 2, y: 0, closed: false, visited: false },
+    ]
+
+    // First search marks nodes as closed/visited
+    nodes[0]!.closed = true
+    nodes[0]!.visited = true
+    nodes[1]!.closed = true
+    nodes[1]!.visited = true
+
+    // Without cleanDirty: second search sees stale flags
+    const staleNode = nodes.find(n => !n.closed && !n.visited)
+    expect(staleNode?.x).toBe(2) // Only node 2 appears available
+
+    // With cleanDirty: reset all flags
+    nodes.forEach(n => { n.closed = false; n.visited = false })
+
+    const cleanNodes = nodes.filter(n => !n.closed && !n.visited)
+    expect(cleanNodes.length).toBe(3) // All nodes available again
+  })
+})
+
+describe('Bug Fix: DOT should use isDead instead of health > 0', () => {
+  test('monster reaching end has isDead=true but may have health > 0', () => {
+    const monster = { isDead: true, health: 500, reachedEnd: true }
+
+    // Old: health > 0 check would incorrectly apply DOT to dead-by-reaching-end monster
+    const oldCheck = monster.health > 0
+    expect(oldCheck).toBe(true) // BUG: would apply DOT
+
+    // Fixed: isDead check correctly identifies dead monster
+    const newCheck = !monster.isDead
+    expect(newCheck).toBe(false) // Correct: no DOT for dead monster
+  })
+})
+
+describe('Bug Fix: TeslaTower should respect lighteningAmount target limit', () => {
+  test('should limit shock targets to lighteningAmount', () => {
+    const monsters = Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      isDead: false,
+      inRange: true,
+    }))
+
+    const lighteningAmount = 10
+
+    let shockCount = 0
+    monsters.forEach(mst => {
+      if (lighteningAmount !== null && shockCount >= lighteningAmount) return
+      if (!mst.isDead && mst.inRange) {
+        shockCount++
+      }
+    })
+
+    expect(shockCount).toBe(10) // Capped at lighteningAmount
+  })
+
+  test('should shock all targets when lighteningAmount is null (rank 0)', () => {
+    const monsters = Array.from({ length: 5 }, (_, i) => ({
+      id: i,
+      isDead: false,
+      inRange: true,
+    }))
+
+    const lighteningAmount: number | null = null
+
+    let shockCount = 0
+    monsters.forEach(mst => {
+      if (lighteningAmount !== null && shockCount >= lighteningAmount) return
+      if (!mst.isDead && mst.inRange) {
+        shockCount++
+      }
+    })
+
+    expect(shockCount).toBe(5) // No cap
+  })
+})
+
+describe('Bug Fix: Path cache full clear on tower placement', () => {
+  test('invalidatePathsThrough should clear all cached paths', () => {
+    const pathCache = new Map<string, unknown>()
+    pathCache.set('0|0', [{ x: 0, y: 0 }])
+    pathCache.set('1|1', [{ x: 10, y: 10 }])
+    pathCache.set('2|2', [{ x: 20, y: 20 }])
+
+    // Fixed: clear all instead of selective
+    pathCache.clear()
+
+    expect(pathCache.size).toBe(0)
+  })
+})

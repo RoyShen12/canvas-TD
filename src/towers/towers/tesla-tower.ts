@@ -172,9 +172,14 @@ class TeslaTower extends TowerBase {
 
       this.renderPermit = TeslaTower.shockRenderFrames
 
+      let shockCount = 0
+      const maxTargets = this.lighteningAmount
+
       monsters.forEach(mst => {
+        if (maxTargets !== null && shockCount >= maxTargets) return
         if (!mst.isDead && this.inRange(mst)) {
           this.shock(mst)
+          shockCount++
 
           // 电击塔不调用父类 shoot，故主动挂载 gem 钩子
           if (this.gem) {
@@ -221,7 +226,7 @@ class TeslaTower extends TowerBase {
       ctx.lineWidth = 1
       ctx.beginPath()
 
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < (this.lighteningAmount ?? 10); i++) {
         this.renderLightening(ctx)
       }
 

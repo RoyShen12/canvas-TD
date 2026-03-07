@@ -767,7 +767,7 @@ class DOTManager {
                 clearInterval(itv);
                 return;
             }
-            if (target.health > 0) {
+            if (!target.isDead) {
                 const damage = singleAttack * (isIgnoreArmor ? 1 : 1 - target.armorResistance);
                 target.applyDamage(damage);
                 damageEmitter(target);
@@ -800,7 +800,7 @@ class DOTManager {
                 clearInterval(itv);
                 return;
             }
-            if (target.health > 0) {
+            if (!target.isDead) {
                 const dotD = singleAttack * (isIgnoreArmor ? 1 : 1 - target.armorResistance);
                 target.applyDamage(dotD);
                 damageEmitter(target);
@@ -5953,9 +5953,14 @@ class TeslaTower extends TowerBase {
         if (this.canShoot) {
             this.gemAttackHook(monsters);
             this.renderPermit = TeslaTower.shockRenderFrames;
+            let shockCount = 0;
+            const maxTargets = this.lighteningAmount;
             monsters.forEach(mst => {
+                if (maxTargets !== null && shockCount >= maxTargets)
+                    return;
                 if (!mst.isDead && this.inRange(mst)) {
                     this.shock(mst);
+                    shockCount++;
                     if (this.gem) {
                         this.gem.hitHook(this, mst, monsters);
                     }
@@ -5986,7 +5991,7 @@ class TeslaTower extends TowerBase {
             const originalLineWidth = ctx.lineWidth;
             ctx.lineWidth = 1;
             ctx.beginPath();
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < (this.lighteningAmount ?? 10); i++) {
                 this.renderLightening(ctx);
             }
             ctx.closePath();
@@ -7129,18 +7134,9 @@ class GamePathfinder {
     invalidateGraph() {
         this._graphDirty = true;
     }
-    invalidatePathsThrough(gridX, gridY) {
+    invalidatePathsThrough(_gridX, _gridY) {
         this.invalidateGraph();
-        this._pathCache.forEach((path, key) => {
-            const pathPassesThrough = path.some(pos => {
-                const coord = this.positionToGridCoordinate(pos);
-                return coord.gridX === gridX && coord.gridY === gridY;
-            });
-            if (pathPassesThrough) {
-                console.log(`detect G pos-path-map ${key} has been contaminated.`);
-                this._pathCache.delete(key);
-            }
-        });
+        this._pathCache.clear();
     }
     clearAllPathCache() {
         this._pathCache.clear();
@@ -7171,6 +7167,7 @@ class GamePathfinder {
                 const endNode = graph.grid[destX]?.[destY];
                 if (!startNode || !endNode)
                     continue;
+                graph.cleanDirty();
                 const path = Astar.astar.search(graph, startNode, endNode);
                 if (path.length === 0) {
                     return true;

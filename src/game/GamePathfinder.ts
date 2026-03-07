@@ -169,21 +169,11 @@ class GamePathfinder {
    * @param gridX 网格 X 索引
    * @param gridY 网格 Y 索引
    */
-  public invalidatePathsThrough(gridX: number, gridY: number): void {
+  public invalidatePathsThrough(_gridX: number, _gridY: number): void {
     this.invalidateGraph()
-
-    // 移除经过该格子的所有缓存路径
-    this._pathCache.forEach((path, key) => {
-      const pathPassesThrough = path.some(pos => {
-        const coord = this.positionToGridCoordinate(pos)
-        return coord.gridX === gridX && coord.gridY === gridY
-      })
-
-      if (pathPassesThrough) {
-        console.log(`detect G pos-path-map ${key} has been contaminated.`)
-        this._pathCache.delete(key)
-      }
-    })
+    // 清除所有路径缓存：放置/移除塔改变了整个图，
+    // 不仅经过该格子的路径可能受影响，其他路径的最优解也可能改变
+    this._pathCache.clear()
   }
 
   /**
@@ -239,6 +229,9 @@ class GamePathfinder {
         const endNode = graph.grid[destX]?.[destY]
 
         if (!startNode || !endNode) continue
+
+        // 清理上次搜索的脏状态，确保图节点属性被重置
+        graph.cleanDirty()
 
         const path = Astar.astar.search(graph, startNode, endNode)
         if (path.length === 0) {

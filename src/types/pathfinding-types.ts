@@ -51,6 +51,11 @@ declare namespace Astar {
      * @param g 二维数组，0 表示可通行，1 表示障碍物
      */
     constructor(g: number[][])
+    /**
+     * 清理上次搜索留下的脏状态
+     * 在同一 Graph 上执行多次搜索时必须调用
+     */
+    cleanDirty(): void
   }
 
   /**

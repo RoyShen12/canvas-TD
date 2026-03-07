@@ -64,7 +64,7 @@ class DOTManager {
         clearInterval(itv)
         return
       }
-      if (target.health > 0) {
+      if (!target.isDead) {
         // 跳 DOT
         const damage = singleAttack * (isIgnoreArmor ? 1 : 1 - target.armorResistance)
         target.applyDamage(damage)
@@ -126,7 +126,7 @@ class DOTManager {
         clearInterval(itv)
         return
       }
-      if (target.health > 0) {
+      if (!target.isDead) {
         const dotD = singleAttack * (isIgnoreArmor ? 1 : 1 - target.armorResistance)
         target.applyDamage(dotD)
         damageEmitter(target)
