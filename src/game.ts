@@ -1039,8 +1039,8 @@ class Game extends Base {
           this._towerForSelect.push(temp)
         }
       })
-      this._towerForSelect.sort(MathUtils.compareProperties('__od'))
     })
+    this._towerForSelect.sort(MathUtils.compareProperties('__od'))
   }
 
   // ============================================================================

@@ -8683,8 +8683,8 @@ class Game extends Base {
                     this._towerForSelect.push(temp);
                 }
             });
-            this._towerForSelect.sort(MathUtils.compareProperties('__od'));
         });
+        this._towerForSelect.sort(MathUtils.compareProperties('__od'));
     }
     run() {
         const update = this._isTestMode ? this._renderer.createPerformanceWrapper(() => this.update(), 'Update', 6, 120, 120, 50, 120, 16.667, 5, 12) : () => this.update();
