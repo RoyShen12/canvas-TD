@@ -5216,7 +5216,7 @@ class _ColossusLaser {
         ctx.lineWidth = this.lineWidth + 2;
         ctx.stroke(path);
         ctx.strokeStyle = this.lineStylesInner;
-        ctx.lineWidth = this.lineWidth - 2;
+        ctx.lineWidth = Math.max(this.lineWidth - 2, 1);
         ctx.stroke(path);
         ctx.lineWidth = originalLineWidth;
         ctx.strokeStyle = originalStrokeStyle;
@@ -6447,7 +6447,10 @@ class CarrierTower extends TowerBase {
     }
     run() {
         if (this.canShoot && this.jetCount < this.KidCount) {
-            Game.callTowerFactory()('CarrierTower.Jet', this.position.copy().dithering(this.radius * 2, this.radius), Game.callImageBitMap(TowerManager.CarrierTower.cn), null, Game.callGridSideSize() / 4, this);
+            const jetImage = Game.callImageBitMap(TowerManager.CarrierTower.cn);
+            if (!jetImage)
+                return;
+            Game.callTowerFactory()('CarrierTower.Jet', this.position.copy().dithering(this.radius * 2, this.radius), jetImage, null, Game.callGridSideSize() / 4, this);
             this.jetCount++;
             this.recordShootTime();
         }

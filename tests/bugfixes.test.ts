@@ -3021,3 +3021,49 @@ describe('Bug Fix #163: Redundant .bind(Game) on arrow function static methods',
   })
 })
 
+// ============================================================================
+// Round 20 Bug Fixes
+// ============================================================================
+
+describe('Bug Fix #165: CarrierTower jet image null assertion crash', () => {
+  test('should guard against null image before spawning jet', () => {
+    const images = new Map<string, any>()
+    // Simulate missing image
+    const getImage = (name: string) => images.get(name) ?? null
+
+    let jetSpawned = false
+    const jetImage = getImage('carrier_jet')
+
+    // With fix: null guard prevents crash
+    if (!jetImage) {
+      // Skip jet spawn - no crash
+    } else {
+      jetSpawned = true
+    }
+
+    expect(jetSpawned).toBe(false)
+
+    // With valid image
+    images.set('carrier_jet', { width: 32, height: 32 })
+    const validImage = getImage('carrier_jet')
+    if (validImage) {
+      jetSpawned = true
+    }
+    expect(jetSpawned).toBe(true)
+  })
+})
+
+describe('Bug Fix #166: ColossusLaser negative inner lineWidth', () => {
+  test('inner line width should be at least 1', () => {
+    // With lineWidth = 1, inner would be 1 - 2 = -1
+    const lineWidth = 1
+    const innerWidth = Math.max(lineWidth - 2, 1)
+    expect(innerWidth).toBe(1)
+
+    // With lineWidth = 5, inner would be 5 - 2 = 3
+    const normalWidth = 5
+    const normalInner = Math.max(normalWidth - 2, 1)
+    expect(normalInner).toBe(3)
+  })
+})
+

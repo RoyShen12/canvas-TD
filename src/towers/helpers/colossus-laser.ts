@@ -142,7 +142,7 @@ class _ColossusLaser {
 
     // 绘制内层
     ctx.strokeStyle = this.lineStylesInner
-    ctx.lineWidth = this.lineWidth - 2
+    ctx.lineWidth = Math.max(this.lineWidth - 2, 1)
     ctx.stroke(path)
 
     ctx.lineWidth = originalLineWidth

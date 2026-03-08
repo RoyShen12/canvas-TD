@@ -112,10 +112,13 @@ class CarrierTower extends TowerBase {
   override run(): void {
     // 检查是否可以释放新载机
     if (this.canShoot && this.jetCount < this.KidCount) {
+      const jetImage = Game.callImageBitMap(TowerManager.CarrierTower.cn!)
+      if (!jetImage) return
+
       Game.callTowerFactory()(
         'CarrierTower.Jet',
         this.position.copy().dithering(this.radius * 2, this.radius),
-        Game.callImageBitMap(TowerManager.CarrierTower.cn!)!,
+        jetImage,
         null,
         Game.callGridSideSize() / 4,
         this
