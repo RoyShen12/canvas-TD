@@ -463,7 +463,13 @@ class WaveManager {
     this._waves.push(...waves)
     if (this._state === WaveState.COMPLETED) {
       this._currentWaveIndex = this._waves.length - waves.length
-      this._state = WaveState.WAITING_FOR_START
+      if (this._autoStart) {
+        this._state = WaveState.SPAWNING
+        this._waves[this._currentWaveIndex]?.reset()
+        console.log(`[WaveManager] 自动开始第 ${this._waves[this._currentWaveIndex]?.getWaveNumber()} 波（无尽模式续接）`)
+      } else {
+        this._state = WaveState.WAITING_FOR_START
+      }
     }
   }
 
