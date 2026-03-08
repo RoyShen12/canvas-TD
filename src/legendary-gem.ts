@@ -644,7 +644,7 @@ class EchoOfLight extends GemBase {
       EchoOfLight.dotInterval,
       Math.round((thisTower.Atk * critR * this.extraTotalDamageRatio) / this.lightDotCount),
       false,
-      thisTower.recordDamage.bind(thisTower)
+      thisTower.boundRecordDamage
     )
   }
 }

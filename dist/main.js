@@ -1950,7 +1950,7 @@ class EchoOfLight extends GemBase {
         if (monster.isDead)
             return;
         const critR = this.getCritMultiplier(thisTower);
-        DOTManager.installDotDuplicatable(monster, 'beOnLightEcho', EchoOfLight.duration, EchoOfLight.dotInterval, Math.round((thisTower.Atk * critR * this.extraTotalDamageRatio) / this.lightDotCount), false, thisTower.recordDamage.bind(thisTower));
+        DOTManager.installDotDuplicatable(monster, 'beOnLightEcho', EchoOfLight.duration, EchoOfLight.dotInterval, Math.round((thisTower.Atk * critR * this.extraTotalDamageRatio) / this.lightDotCount), false, thisTower.boundRecordDamage);
     }
 }
 class GemOfAnger extends GemBase {
@@ -2864,7 +2864,7 @@ class TowerBase extends ItemBase {
             constructorRef: isFullInstance ? this.constructor : TowerBase,
             inlayGem: isFullInstance ? this.inlayGem.bind(this) : () => null,
         };
-        StatusBoardRenderer.render(data, bx1, by1, showGemPanel, showMoreDetail, specifiedWidth || 150, Game.callElement.bind(Game), Game.callMoney.bind(Game), Game.updateGemPoint, (delta) => {
+        StatusBoardRenderer.render(data, bx1, by1, showGemPanel, showMoreDetail, specifiedWidth || 150, Game.callElement, Game.callMoney, Game.updateGemPoint, (delta) => {
             Game.updateGemPoint += delta;
         });
     }
@@ -3208,7 +3208,7 @@ class MonsterBase extends ItemBase {
             constructorRef: MonsterBase,
             inlayGem: () => null,
         };
-        StatusBoardRenderer.render(data, bx1, by1, showGemPanel, showMoreDetail, 180, Game.callElement.bind(Game), Game.callMoney.bind(Game), Game.updateGemPoint, (delta) => {
+        StatusBoardRenderer.render(data, bx1, by1, showGemPanel, showMoreDetail, 180, Game.callElement, Game.callMoney, Game.updateGemPoint, (delta) => {
             Game.updateGemPoint += delta;
         });
     }
@@ -6382,7 +6382,8 @@ class LaserTower extends TowerBase {
                 }
                 if (!mst.isDead) {
                     mst.applyDamage(this.FAtk * (1 - mst.armorResistance) * this.calculateDamageRatio(mst));
-                    this.recordDamage(mst);
+                    if (mst.lastAbsDmg > 0)
+                        this.recordDamage(mst);
                 }
             }
         });
@@ -8337,7 +8338,8 @@ class Game extends Base {
             },
             enumerable: true
         });
-        Game.callTowerFactory = () => this._towerManager.Factory.bind(this._towerManager);
+        const boundTowerFactory = this._towerManager.Factory.bind(this._towerManager);
+        Game.callTowerFactory = () => boundTowerFactory;
         Game.callTowerList = () => this._towerManager.towers;
         Game.callIndependentTowerList = () => this._towerManager.independentTowers;
         Game.callMonsterList = () => this._monsterManager.monsters;
@@ -8648,6 +8650,7 @@ class Game extends Base {
         const chunkedTowerCtors = _.chunk(TowerManager.towerCtors, chunkSize);
         const tsMarginBottom = this._gridSize / 2 + 6;
         const bgCtx = this._renderer.backgroundCtx;
+        const boundRenderText = this._renderer.renderStandardText.bind(this._renderer);
         chunkedTowerCtors.forEach((ctorRow, rowIdx) => {
             if (rowIdx > 0) {
                 tsAreaRectTL.move(new PolarVector(tsMarginBottom + tsItemRadius * 2, 270));
@@ -8662,7 +8665,7 @@ class Game extends Base {
                         return;
                     }
                     const temp = new ItemBase(new Position(ax, ay), tsItemRadius, 0, 'rgba(255,67,56,1)', img);
-                    Game.IOC(temp, _t, bgCtx, this._renderer.renderStandardText.bind(this._renderer), ax, ay, tsItemRadius, this._money);
+                    Game.IOC(temp, _t, bgCtx, boundRenderText, ax, ay, tsItemRadius, this._money);
                     this._towerForSelect.push(temp);
                 }
                 else {
@@ -8673,7 +8676,7 @@ class Game extends Base {
                     }
                     const spr_d = sprite.getClone(6);
                     const temp = new ItemBase(new Position(ax, ay), tsItemRadius, 0, 'rgba(255,67,56,1)', spr_d);
-                    Game.IOC(temp, _t, bgCtx, this._renderer.renderStandardText.bind(this._renderer), ax, ay, tsItemRadius, this._money);
+                    Game.IOC(temp, _t, bgCtx, boundRenderText, ax, ay, tsItemRadius, this._money);
                     this._towerForSelect.push(temp);
                 }
             });

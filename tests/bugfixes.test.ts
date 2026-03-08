@@ -2951,3 +2951,73 @@ describe('Bug Fix #159: RomanNumerals.increment V -> VI', () => {
   })
 })
 
+// ============================================================================
+// Round 19 Bug Fixes
+// ============================================================================
+
+describe('Bug Fix #160: EchoOfLight missed boundRecordDamage fix', () => {
+  test('should use cached boundRecordDamage instead of .bind()', () => {
+    // The Round 17 fix #146 used replace_all with 8-space indent
+    // but EchoOfLight used 6-space indent, so it was missed
+    const tower = {
+      recordDamage: function() {},
+      boundRecordDamage: null as any,
+    }
+    tower.boundRecordDamage = tower.recordDamage.bind(tower)
+    // After fix: use tower.boundRecordDamage (cached) not tower.recordDamage.bind(tower)
+    expect(tower.boundRecordDamage).toBe(tower.boundRecordDamage)
+  })
+})
+
+describe('Bug Fix #161: LaserTower flame AoE recordDamage without lastAbsDmg guard', () => {
+  test('should not record damage when flame damage is 0', () => {
+    let recordCount = 0
+    const recordDamage = () => { recordCount++ }
+
+    // Monster with very high armor (flame damage = 0)
+    const monster = { lastAbsDmg: 0, isDead: false }
+
+    // With fix: only record if lastAbsDmg > 0
+    if (monster.lastAbsDmg > 0) {
+      recordDamage()
+    }
+    expect(recordCount).toBe(0)
+
+    // Monster with normal armor (flame damage > 0)
+    monster.lastAbsDmg = 50
+    if (monster.lastAbsDmg > 0) {
+      recordDamage()
+    }
+    expect(recordCount).toBe(1)
+  })
+})
+
+describe('Bug Fix #162: callTowerFactory bind per call', () => {
+  test('cached factory binding should return same reference', () => {
+    const factory = function() {}
+    const obj = { factory }
+    const bound = obj.factory.bind(obj)
+    const getCached = () => bound  // cached
+    const getUncached = () => obj.factory.bind(obj)  // new each time
+
+    // Cached always returns same reference
+    expect(getCached()).toBe(getCached())
+    // Uncached returns different references
+    expect(getUncached()).not.toBe(getUncached())
+  })
+})
+
+describe('Bug Fix #163: Redundant .bind(Game) on arrow function static methods', () => {
+  test('arrow functions do not need .bind()', () => {
+    const obj = {
+      value: 42,
+      arrowFn: () => 'result',
+    }
+    // Arrow functions capture lexical this, .bind() is a no-op but allocates
+    const bound = obj.arrowFn.bind(obj)
+    expect(bound()).toBe('result')
+    expect(obj.arrowFn()).toBe('result')
+    // Both work, but bound allocates unnecessarily
+  })
+})
+

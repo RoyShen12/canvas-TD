@@ -482,8 +482,8 @@ class MonsterBase extends ItemBase {
       showGemPanel,
       showMoreDetail,
       180,
-      Game.callElement.bind(Game),
-      Game.callMoney.bind(Game),
+      Game.callElement,
+      Game.callMoney,
       Game.updateGemPoint,
       (delta: number) => {
         Game.updateGemPoint += delta

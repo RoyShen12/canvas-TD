@@ -486,7 +486,8 @@ class Game extends Base {
       enumerable: true
     })
 
-    Game.callTowerFactory = () => this._towerManager.Factory.bind(this._towerManager)
+    const boundTowerFactory = this._towerManager.Factory.bind(this._towerManager)
+    Game.callTowerFactory = () => boundTowerFactory
     Game.callTowerList = () => this._towerManager.towers as readonly TowerBase[]
     Game.callIndependentTowerList = () =>
       this._towerManager.independentTowers as unknown as readonly (TowerBase & {
@@ -1006,6 +1007,7 @@ class Game extends Base {
     const tsMarginBottom = this._gridSize / 2 + 6
 
     const bgCtx = this._renderer.backgroundCtx as unknown as CanvasRenderingContext2D
+    const boundRenderText = this._renderer.renderStandardText.bind(this._renderer)
 
     chunkedTowerCtors.forEach((ctorRow, rowIdx) => {
       if (rowIdx > 0) {
@@ -1023,7 +1025,7 @@ class Game extends Base {
             return
           }
           const temp = new ItemBase(new Position(ax, ay), tsItemRadius, 0, 'rgba(255,67,56,1)', img) as IocItem
-          Game.IOC(temp, _t, bgCtx, this._renderer.renderStandardText.bind(this._renderer), ax, ay, tsItemRadius, this._money)
+          Game.IOC(temp, _t, bgCtx, boundRenderText, ax, ay, tsItemRadius, this._money)
           this._towerForSelect.push(temp)
         } else {
           const sprite = this._imageManager.getSprite(_t.n.substring(6))
@@ -1033,7 +1035,7 @@ class Game extends Base {
           }
           const spr_d = sprite.getClone(6)
           const temp = new ItemBase(new Position(ax, ay), tsItemRadius, 0, 'rgba(255,67,56,1)', spr_d) as IocItem
-          Game.IOC(temp, _t, bgCtx, this._renderer.renderStandardText.bind(this._renderer), ax, ay, tsItemRadius, this._money)
+          Game.IOC(temp, _t, bgCtx, boundRenderText, ax, ay, tsItemRadius, this._money)
           this._towerForSelect.push(temp)
         }
       })

@@ -567,8 +567,8 @@ abstract class TowerBase extends ItemBase {
       showGemPanel,
       showMoreDetail,
       specifiedWidth || 150,
-      Game.callElement.bind(Game),
-      Game.callMoney.bind(Game),
+      Game.callElement,
+      Game.callMoney,
       Game.updateGemPoint,
       (delta: number) => {
         Game.updateGemPoint += delta

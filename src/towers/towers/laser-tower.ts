@@ -220,7 +220,7 @@ class LaserTower extends TowerBase {
         // 火焰伤害
         if (!mst.isDead) {
           mst.applyDamage(this.FAtk * (1 - mst.armorResistance) * this.calculateDamageRatio(mst))
-          this.recordDamage(mst)
+          if (mst.lastAbsDmg > 0) this.recordDamage(mst)
         }
       }
     })
