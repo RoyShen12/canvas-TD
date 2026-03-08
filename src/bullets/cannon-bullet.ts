@@ -154,6 +154,7 @@ class CannonBullet extends BulletBase {
 
     for (const m of monsters) {
       if (m.isDead) continue
+      if (m === monster) continue // 跳过直击目标，避免双重伤害和双重统计
       if (Position.distancePow2(m.position, targetPosition) >= explosionRadiusSquared) continue
 
       // 计算伤害
@@ -170,7 +171,7 @@ class CannonBullet extends BulletBase {
         this.burnDotInterval,
         this.burnDotDamage * ratio,
         false, // 不无视护甲
-        this.emitter.bind(this)
+        this.emitter
       )
     }
   }

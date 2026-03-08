@@ -78,6 +78,8 @@ class AnimationSprite extends Base {
       }
     }
 
+    if (!this.columnCount || !this.rowCount) return
+
     const frameWidth = this.img.width / this.columnCount
     const frameHeight = this.img.height / this.rowCount
     const sourceX = (this.realNextFrameIndex % this.columnCount) * frameWidth

@@ -56,6 +56,9 @@ class PenetratingArrow extends BulletBase {
 
     // 计算飞行目的地：从当前位置向目标方向延伸到屏幕对角线长度
     this.destination = this.position.copy().moveTo(target.position, this.gameContext.getDiagonalLength())
+
+    // 目的地已计算，不再需要持有目标引用（允许目标被 GC）
+    this.target = null
   }
 
   /**

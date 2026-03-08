@@ -29,7 +29,7 @@ class NormalArrow extends BulletBase {
    * @param atk 攻击力
    * @param target 目标怪物
    * @param image 箭矢图像
-   * @param critChance 暴击概率 (0-100)
+   * @param critChance 暴击概率 (0-1)
    * @param critRatio 暴击伤害倍率
    * @param trapChance 束缚概率 (0-100)
    * @param trapDuration 束缚持续时间 (毫秒)

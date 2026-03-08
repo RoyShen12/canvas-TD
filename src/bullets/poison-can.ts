@@ -70,7 +70,7 @@ class PoisonCan extends BulletBase {
       this.poisonInterval,
       this.poisonAtk,
       true, // 无视护甲
-      this.emitter.bind(this)
+      this.emitter
     )
   }
 }

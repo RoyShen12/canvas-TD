@@ -2351,6 +2351,8 @@ class AnimationSprite extends Base {
                 return;
             }
         }
+        if (!this.columnCount || !this.rowCount)
+            return;
         const frameWidth = this.img.width / this.columnCount;
         const frameHeight = this.img.height / this.rowCount;
         const sourceX = (this.realNextFrameIndex % this.columnCount) * frameWidth;
@@ -3412,6 +3414,7 @@ class PenetratingArrow extends BulletBase {
         this.armorPenetration = armorPenetration;
         this.damageDecay = damageDecay;
         this.destination = this.position.copy().moveTo(target.position, this.gameContext.getDiagonalLength());
+        this.target = null;
     }
     run(monsters) {
         this.position.moveTo(this.destination, this.speed);
@@ -3504,13 +3507,15 @@ class CannonBullet extends BulletBase {
         for (const m of monsters) {
             if (m.isDead)
                 continue;
+            if (m === monster)
+                continue;
             if (Position.distancePow2(m.position, targetPosition) >= explosionRadiusSquared)
                 continue;
             const ratio = this.ratioCalc(m);
             const damage = this.explosionDmg * (1 - m.armorResistance) * ratio;
             m.applyDamage(damage);
             this.emitter(m);
-            DOTManager.installDOT(m, 'beBurned', this.burnDotDuration, this.burnDotInterval, this.burnDotDamage * ratio, false, this.emitter.bind(this));
+            DOTManager.installDOT(m, 'beBurned', this.burnDotDuration, this.burnDotInterval, this.burnDotDamage * ratio, false, this.emitter);
         }
     }
 }
@@ -3601,7 +3606,7 @@ class PoisonCan extends BulletBase {
     }
     hit(monster) {
         super.hit(monster);
-        DOTManager.installDOT(monster, 'bePoisoned', this.poisonDuration, this.poisonInterval, this.poisonAtk, true, this.emitter.bind(this));
+        DOTManager.installDOT(monster, 'bePoisoned', this.poisonDuration, this.poisonInterval, this.poisonAtk, true, this.emitter);
     }
 }
 class Blade extends BulletBase {
@@ -3617,7 +3622,7 @@ class Blade extends BulletBase {
         if (!this.target)
             return;
         if (this.target.isDead) {
-            if (this.bounceTime > 0 && monsters.length > 1) {
+            if (this.bounceTime > 0 && monsters.some(m => m !== this.target && !m.isDead)) {
                 this.bounceToNext(monsters);
                 if (!this.target) {
                     this.fulfilled = true;
@@ -3633,7 +3638,7 @@ class Blade extends BulletBase {
         this.position.moveTo(this.target.position, this.speed);
         if (this.isReaching) {
             this.hit(this.target, 1, monsters);
-            if (this.bounceTime > 0 && monsters.length > 1) {
+            if (this.bounceTime > 0 && monsters.some(m => m !== this.target && !m.isDead)) {
                 this.bounceToNext(monsters);
                 if (!this.target) {
                     this.fulfilled = true;

@@ -57,7 +57,7 @@ class Blade extends BulletBase {
     // 先检查目标是否死亡，再移动
     if (this.target.isDead) {
       // 尝试弹跳到下一个目标
-      if (this.bounceTime > 0 && monsters.length > 1) {
+      if (this.bounceTime > 0 && monsters.some(m => m !== this.target && !m.isDead)) {
         this.bounceToNext(monsters)
         if (!this.target) {
           this.fulfilled = true
@@ -78,7 +78,7 @@ class Blade extends BulletBase {
       this.hit(this.target, 1, monsters)
 
       // 尝试弹跳
-      if (this.bounceTime > 0 && monsters.length > 1) {
+      if (this.bounceTime > 0 && monsters.some(m => m !== this.target && !m.isDead)) {
         this.bounceToNext(monsters)
         if (!this.target) {
           this.fulfilled = true
