@@ -1010,6 +1010,8 @@ class StatusBoardRenderer {
         dataChunk.forEach((data, idx) => {
             const showD = showDesc && constructorRef.informationDesc.has(data[0]);
             const row = rootNode.childNodes.item(idx + offset + jump);
+            if (!row)
+                return;
             DomUtils.removeNodeTextAndStyle(row);
             if (!row.hasChildNodes()) {
                 DomUtils.generateTwoCol(row, null, null);
@@ -1022,6 +1024,8 @@ class StatusBoardRenderer {
             row.lastChild.textContent = data[1];
             if (showD) {
                 const rowD = rootNode.childNodes.item(idx + offset + jump + 1);
+                if (!rowD)
+                    return;
                 DomUtils.removeNodeTextAndStyle(rowD);
                 DomUtils.removeAllChildren(rowD);
                 rowD.textContent = constructorRef.informationDesc.get(data[0]) || '';
@@ -6474,6 +6478,7 @@ class DamageTextBox {
     position;
     width;
     fontStyle;
+    moveVector;
     constructor(damage, pos, width = 120, fontSize, minFontSize, fillStyle, speed, lifeTicks) {
         this.position = pos;
         this.width = width;
@@ -6486,6 +6491,7 @@ class DamageTextBox {
             sub: fontSize - minFontSize
         };
         this.fontStyle = fillStyle ?? 'rgb(0,0,0)';
+        this.moveVector = new PolarVector(this.speed, 90);
     }
     get font() {
         return `${(this.life / this.maxLife) * this.fontSize.sub + this.fontSize.min}px Game`;
@@ -6500,7 +6506,7 @@ class DamageTextBox {
         ctx.fillStyle = prevFillStyle;
         this.life--;
         if (this.life >= 0) {
-            this.position.move(new PolarVector(this.speed, 90));
+            this.position.move(this.moveVector);
             return false;
         }
         return true;

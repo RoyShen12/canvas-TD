@@ -23,6 +23,8 @@ class DamageTextBox {
   private readonly position: Position
   private readonly width: number
   private readonly fontStyle: string
+  /** 缓存的移动向量（避免每帧分配新 PolarVector） */
+  private readonly moveVector: PolarVector
 
   /**
    * @param damage - The damage value to display
@@ -57,6 +59,7 @@ class DamageTextBox {
     }
 
     this.fontStyle = fillStyle ?? 'rgb(0,0,0)'
+    this.moveVector = new PolarVector(this.speed, 90)
   }
 
   private get font(): string {
@@ -82,7 +85,7 @@ class DamageTextBox {
     this.life--
 
     if (this.life >= 0) {
-      this.position.move(new PolarVector(this.speed, 90))
+      this.position.move(this.moveVector)
       return false
     }
     return true

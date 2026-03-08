@@ -71,6 +71,7 @@ class StatusBoardRenderer {
       const showD = showDesc && constructorRef.informationDesc.has(data[0]!)
 
       const row = rootNode.childNodes.item(idx + offset + jump)
+      if (!row) return
       DomUtils.removeNodeTextAndStyle(row as HTMLElement)
 
       if (!row.hasChildNodes()) {
@@ -85,6 +86,7 @@ class StatusBoardRenderer {
 
       if (showD) {
         const rowD = rootNode.childNodes.item(idx + offset + jump + 1) as HTMLElement
+        if (!rowD) return
         DomUtils.removeNodeTextAndStyle(rowD as HTMLElement)
         DomUtils.removeAllChildren(rowD)
         rowD.textContent = constructorRef.informationDesc.get(data[0] as string) || ''
