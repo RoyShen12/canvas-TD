@@ -340,6 +340,11 @@ class Game extends Base {
   /** 子弹管理器 */
   private readonly _bulletManager: BulletManager
 
+  /** 缓存的绑定函数（避免每帧创建新对象） */
+  private readonly _boundUpdateMoney: (delta: number, pos?: Position) => void
+  private readonly _boundGetPathToEnd: (pos: Position) => PositionLike[]
+  private readonly _boundUpdateLife: (delta: number) => void
+
   // ============================================================================
   // 构造函数
   // ============================================================================
@@ -389,6 +394,11 @@ class Game extends Base {
 
     this._gemPoints = this._isTestMode ? 1e14 : 0
     this._loopSpeeds = this._isTestMode ? [2, 3, 5, 10, 1] : [2, 3, 1]
+
+    // 缓存绑定函数，避免每帧创建新对象
+    this._boundUpdateMoney = this.updateMoney.bind(this)
+    this._boundGetPathToEnd = this.getPathToEnd.bind(this)
+    this._boundUpdateLife = this.updateLife.bind(this)
 
     this._initStaticAccessors()
   }
@@ -1023,18 +1033,27 @@ class Game extends Base {
         const ay = tsAreaRectTL.y + tsItemRadius
 
         if (!_t.n.includes('$spr::')) {
-          const temp = new ItemBase(new Position(ax, ay), tsItemRadius, 0, 'rgba(255,67,56,1)', this._imageManager.getImage(_t.n)!) as IocItem
+          const img = this._imageManager.getImage(_t.n)
+          if (!img) {
+            console.error(`[Game] Tower image not found: ${_t.n}`)
+            return
+          }
+          const temp = new ItemBase(new Position(ax, ay), tsItemRadius, 0, 'rgba(255,67,56,1)', img) as IocItem
           Game.IOC(temp, _t, bgCtx, this._renderer.renderStandardText.bind(this._renderer), ax, ay, tsItemRadius, this._money)
           this._towerForSelect.push(temp)
-          this._towerForSelect.sort(MathUtils.compareProperties('__od'))
         } else {
-          const spr_d = this._imageManager.getSprite(_t.n.substr(6))!.getClone(6)
+          const sprite = this._imageManager.getSprite(_t.n.substring(6))
+          if (!sprite) {
+            console.error(`[Game] Tower sprite not found: ${_t.n.substring(6)}`)
+            return
+          }
+          const spr_d = sprite.getClone(6)
           const temp = new ItemBase(new Position(ax, ay), tsItemRadius, 0, 'rgba(255,67,56,1)', spr_d) as IocItem
           Game.IOC(temp, _t, bgCtx, this._renderer.renderStandardText.bind(this._renderer), ax, ay, tsItemRadius, this._money)
           this._towerForSelect.push(temp)
-          this._towerForSelect.sort(MathUtils.compareProperties('__od'))
         }
       })
+      this._towerForSelect.sort(MathUtils.compareProperties('__od'))
     })
   }
 
@@ -1064,8 +1083,8 @@ class Game extends Base {
     if (this.isPausing) {
       // 暂停时仍然执行清理，但不递增 tick
       this._bulletManager.scanSwipe()
-      this._monsterManager.scanSwipe(this.updateMoney.bind(this))
-      const result = this._towerManager.scanSwipe(this.updateMoney.bind(this))
+      this._monsterManager.scanSwipe(this._boundUpdateMoney)
+      const result = this._towerManager.scanSwipe(this._boundUpdateMoney)
       this._towerNeedRender = this._towerNeedRender || result
       return result
     }
@@ -1079,11 +1098,11 @@ class Game extends Base {
 
     this._towerManager.run(this._monsterManager.monsters)
     this._bulletManager.run(this._monsterManager.monsters)
-    this._monsterManager.run(this.getPathToEnd.bind(this), this.updateLife.bind(this), this._towerManager.towers, this._monsterManager.monsters)
+    this._monsterManager.run(this._boundGetPathToEnd, this._boundUpdateLife, this._towerManager.towers, this._monsterManager.monsters)
 
     this._bulletManager.scanSwipe()
-    this._monsterManager.scanSwipe(this.updateMoney.bind(this))
-    const result = this._towerManager.scanSwipe(this.updateMoney.bind(this))
+    this._monsterManager.scanSwipe(this._boundUpdateMoney)
+    const result = this._towerManager.scanSwipe(this._boundUpdateMoney)
     this._towerNeedRender = this._towerNeedRender || result
 
     // 检查胜利条件：所有波次完成且场上无怪物

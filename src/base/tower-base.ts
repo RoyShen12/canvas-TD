@@ -315,7 +315,9 @@ abstract class TowerBase extends ItemBase {
 
     if (__global_test_mode) {
       while (!this.gem.isMaxLevel && this.gem.level < 1e6) {
-        Game.updateGemPoint -= this.gem.levelUp(Game.updateGemPoint)
+        const cost = this.gem.levelUp(Game.updateGemPoint)
+        if (cost === 0) break
+        Game.updateGemPoint -= cost
       }
     }
 

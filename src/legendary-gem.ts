@@ -175,6 +175,7 @@ class PainEnhancer extends GemBase {
   }
 
   override hitHook(thisTower: TowerBase, monster: MonsterBase) {
+    if (monster.isDead) return
     if (Math.random() < PainEnhancer.chance) {
       DOTManager.installDOT(
         monster,
@@ -378,6 +379,7 @@ class BaneOfTheStricken extends GemBase {
   }
 
   override hitHook(thisTower: TowerBase, monster: MonsterBase) {
+    if (monster.isDead) return
     const oldV = thisTower._eachMonsterDamageRatio.get(monster.id) || 1
     thisTower._eachMonsterDamageRatio.set(monster.id, oldV + this.damageMakingRatioPerHit)
   }
@@ -560,6 +562,7 @@ class ZeisStoneOfVengeance extends GemBase {
   }
 
   override hitHook(_thisTower: TowerBase, monster: MonsterBase) {
+    if (monster.isDead) return
     if (Math.random() < ZeisStoneOfVengeance.chance) {
       monster.registerImprison(msToTicks(ZeisStoneOfVengeance.stuporDuration))
     }
@@ -631,6 +634,7 @@ class EchoOfLight extends GemBase {
   }
 
   override hitHook(thisTower: TowerBase, monster: MonsterBase) {
+    if (monster.isDead) return
     const critR = this.getCritMultiplier(thisTower)
 
     DOTManager.installDotDuplicatable(

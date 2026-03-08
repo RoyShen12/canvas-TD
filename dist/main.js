@@ -1589,6 +1589,8 @@ class PainEnhancer extends GemBase {
         return PainEnhancer.baseBleedDamageRatio + this.level * PainEnhancer.bleedDamageRatioLevelMx;
     }
     hitHook(thisTower, monster) {
+        if (monster.isDead)
+            return;
         if (Math.random() < PainEnhancer.chance) {
             DOTManager.installDOT(monster, 'beBloodied', this.bleedDuration, this.bleedInterval, Math.round((thisTower.Atk * this.bleedDamageRatio) / this.bleedDotCount), false, thisTower.recordDamage.bind(thisTower));
         }
@@ -1742,6 +1744,8 @@ class BaneOfTheStricken extends GemBase {
         return (this.level + 1) * 16 + 40;
     }
     hitHook(thisTower, monster) {
+        if (monster.isDead)
+            return;
         const oldV = thisTower._eachMonsterDamageRatio.get(monster.id) || 1;
         thisTower._eachMonsterDamageRatio.set(monster.id, oldV + this.damageMakingRatioPerHit);
     }
@@ -1878,6 +1882,8 @@ class ZeisStoneOfVengeance extends GemBase {
         return (this.level + 1) * 45;
     }
     hitHook(_thisTower, monster) {
+        if (monster.isDead)
+            return;
         if (Math.random() < ZeisStoneOfVengeance.chance) {
             monster.registerImprison(msToTicks(ZeisStoneOfVengeance.stuporDuration));
         }
@@ -1933,6 +1939,8 @@ class EchoOfLight extends GemBase {
         return 1;
     }
     hitHook(thisTower, monster) {
+        if (monster.isDead)
+            return;
         const critR = this.getCritMultiplier(thisTower);
         DOTManager.installDotDuplicatable(monster, 'beOnLightEcho', EchoOfLight.duration, EchoOfLight.dotInterval, Math.round((thisTower.Atk * critR * this.extraTotalDamageRatio) / this.lightDotCount), false, thisTower.recordDamage.bind(thisTower));
     }
@@ -2689,7 +2697,10 @@ class TowerBase extends ItemBase {
         this.gem.initEffect(this);
         if (__global_test_mode) {
             while (!this.gem.isMaxLevel && this.gem.level < 1e6) {
-                Game.updateGemPoint -= this.gem.levelUp(Game.updateGemPoint);
+                const cost = this.gem.levelUp(Game.updateGemPoint);
+                if (cost === 0)
+                    break;
+                Game.updateGemPoint -= cost;
             }
         }
         return this.gem;
@@ -8197,6 +8208,9 @@ class Game extends Base {
     _towerManager;
     _monsterManager;
     _bulletManager;
+    _boundUpdateMoney;
+    _boundGetPathToEnd;
+    _boundUpdateLife;
     constructor(imageManager, GX = GRID_CONFIG.DEFAULT_COLUMNS, GY = GRID_CONFIG.DEFAULT_ROWS) {
         super();
         g = this;
@@ -8225,6 +8239,9 @@ class Game extends Base {
         this._bulletManager = new BulletManager();
         this._gemPoints = this._isTestMode ? 1e14 : 0;
         this._loopSpeeds = this._isTestMode ? [2, 3, 5, 10, 1] : [2, 3, 1];
+        this._boundUpdateMoney = this.updateMoney.bind(this);
+        this._boundGetPathToEnd = this.getPathToEnd.bind(this);
+        this._boundUpdateLife = this.updateLife.bind(this);
         this._initStaticAccessors();
     }
     get _objectCount() {
@@ -8605,19 +8622,28 @@ class Game extends Base {
                 const ax = tsAreaRectTL.x + oneTsWidth * idx + tsItemRadius;
                 const ay = tsAreaRectTL.y + tsItemRadius;
                 if (!_t.n.includes('$spr::')) {
-                    const temp = new ItemBase(new Position(ax, ay), tsItemRadius, 0, 'rgba(255,67,56,1)', this._imageManager.getImage(_t.n));
+                    const img = this._imageManager.getImage(_t.n);
+                    if (!img) {
+                        console.error(`[Game] Tower image not found: ${_t.n}`);
+                        return;
+                    }
+                    const temp = new ItemBase(new Position(ax, ay), tsItemRadius, 0, 'rgba(255,67,56,1)', img);
                     Game.IOC(temp, _t, bgCtx, this._renderer.renderStandardText.bind(this._renderer), ax, ay, tsItemRadius, this._money);
                     this._towerForSelect.push(temp);
-                    this._towerForSelect.sort(MathUtils.compareProperties('__od'));
                 }
                 else {
-                    const spr_d = this._imageManager.getSprite(_t.n.substr(6)).getClone(6);
+                    const sprite = this._imageManager.getSprite(_t.n.substring(6));
+                    if (!sprite) {
+                        console.error(`[Game] Tower sprite not found: ${_t.n.substring(6)}`);
+                        return;
+                    }
+                    const spr_d = sprite.getClone(6);
                     const temp = new ItemBase(new Position(ax, ay), tsItemRadius, 0, 'rgba(255,67,56,1)', spr_d);
                     Game.IOC(temp, _t, bgCtx, this._renderer.renderStandardText.bind(this._renderer), ax, ay, tsItemRadius, this._money);
                     this._towerForSelect.push(temp);
-                    this._towerForSelect.sort(MathUtils.compareProperties('__od'));
                 }
             });
+            this._towerForSelect.sort(MathUtils.compareProperties('__od'));
         });
     }
     run() {
@@ -8631,8 +8657,8 @@ class Game extends Base {
     update() {
         if (this.isPausing) {
             this._bulletManager.scanSwipe();
-            this._monsterManager.scanSwipe(this.updateMoney.bind(this));
-            const result = this._towerManager.scanSwipe(this.updateMoney.bind(this));
+            this._monsterManager.scanSwipe(this._boundUpdateMoney);
+            const result = this._towerManager.scanSwipe(this._boundUpdateMoney);
             this._towerNeedRender = this._towerNeedRender || result;
             return result;
         }
@@ -8642,10 +8668,10 @@ class Game extends Base {
         }
         this._towerManager.run(this._monsterManager.monsters);
         this._bulletManager.run(this._monsterManager.monsters);
-        this._monsterManager.run(this.getPathToEnd.bind(this), this.updateLife.bind(this), this._towerManager.towers, this._monsterManager.monsters);
+        this._monsterManager.run(this._boundGetPathToEnd, this._boundUpdateLife, this._towerManager.towers, this._monsterManager.monsters);
         this._bulletManager.scanSwipe();
-        this._monsterManager.scanSwipe(this.updateMoney.bind(this));
-        const result = this._towerManager.scanSwipe(this.updateMoney.bind(this));
+        this._monsterManager.scanSwipe(this._boundUpdateMoney);
+        const result = this._towerManager.scanSwipe(this._boundUpdateMoney);
         this._towerNeedRender = this._towerNeedRender || result;
         if (!this._isVictory && !this._isGameOver && !this._isDummyTestMode) {
             const wm = WaveManager.getInstance();
