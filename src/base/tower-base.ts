@@ -124,6 +124,10 @@ abstract class TowerBase extends ItemBase {
 
   public isSold = false
 
+  /** 缓存的绑定函数 */
+  public readonly boundRecordDamage: (monster: MonsterBase) => void
+  public readonly boundCalculateDamageRatio: (monster: MonsterBase) => number
+
   public _gridIx!: number
   public _gridIy!: number
 
@@ -148,6 +152,10 @@ abstract class TowerBase extends ItemBase {
     this.levelSlcFx = levelSlcFx
     this.levelRngFx = levelRngFx
     this._lastShootTime = this.bornStamp
+
+    // 缓存绑定函数（避免每次射击分配新对象）
+    this.boundRecordDamage = this.recordDamage.bind(this)
+    this.boundCalculateDamageRatio = this.calculateDamageRatio.bind(this)
 
     // 定期清理已死亡怪物的伤害比例记录
     this.intervalTimers.push(
@@ -339,7 +347,7 @@ abstract class TowerBase extends ItemBase {
     if (this.target) {
       const ratio = this.calculateDamageRatio(this.target)
       this.bulletCtl.Factory(
-        this.recordDamage.bind(this),
+        this.boundRecordDamage,
         this.bulletCtorName,
         this.position.copy().dithering(this.radius),
         this.Atk * ratio,

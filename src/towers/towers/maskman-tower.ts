@@ -239,7 +239,7 @@ class MaskManTower extends TowerBase {
     if (this.multipleTarget[idx] && !this.multipleTarget[idx]!.isDead) {
       const ratio = this.calculateDamageRatio(this.multipleTarget[idx]!)
       this.bulletCtl.Factory(
-        this.recordDamage.bind(this),
+        this.boundRecordDamage,
         this.bulletCtorName,
         this.position.copy().dithering(this.radius),
         this.Atk * ratio,

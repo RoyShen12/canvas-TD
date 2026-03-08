@@ -2573,6 +2573,8 @@ class TowerBase extends ItemBase {
     description = null;
     name = null;
     isSold = false;
+    boundRecordDamage;
+    boundCalculateDamageRatio;
     _gridIx;
     _gridIy;
     constructor(position, radius, borderWidth, borderStyle, image, price, levelAtkFx, levelHstFx, levelSlcFx, levelRngFx) {
@@ -2584,6 +2586,8 @@ class TowerBase extends ItemBase {
         this.levelSlcFx = levelSlcFx;
         this.levelRngFx = levelRngFx;
         this._lastShootTime = this.bornStamp;
+        this.boundRecordDamage = this.recordDamage.bind(this);
+        this.boundCalculateDamageRatio = this.calculateDamageRatio.bind(this);
         this.intervalTimers.push(setInterval(() => {
             const monsters = this.gameContext.getMonsterList();
             Array.from(this._eachMonsterDamageRatio)
@@ -2723,7 +2727,7 @@ class TowerBase extends ItemBase {
     produceBullet(_i, _monsters) {
         if (this.target) {
             const ratio = this.calculateDamageRatio(this.target);
-            this.bulletCtl.Factory(this.recordDamage.bind(this), this.bulletCtorName, this.position.copy().dithering(this.radius), this.Atk * ratio, this.target, this.bulletImage);
+            this.bulletCtl.Factory(this.boundRecordDamage, this.bulletCtorName, this.position.copy().dithering(this.radius), this.Atk * ratio, this.target, this.bulletImage);
         }
     }
     recordShootTime() {
@@ -5542,7 +5546,7 @@ class CannonShooter extends TowerBase {
     }
     produceBullet() {
         if (this.target) {
-            this.bulletCtl.Factory(this.recordDamage.bind(this), this.bulletCtorName, this.position.copy().dithering(this.radius), this.Atk, this.target, this.bulletImage, this.EpdAtk, this.EpdRng, this.BrnAtk, this.BrnItv, this.BrnDur, this.extraBulletV, this.calculateDamageRatio.bind(this));
+            this.bulletCtl.Factory(this.boundRecordDamage, this.bulletCtorName, this.position.copy().dithering(this.radius), this.Atk, this.target, this.bulletImage, this.EpdAtk, this.EpdRng, this.BrnAtk, this.BrnItv, this.BrnDur, this.extraBulletV, this.boundCalculateDamageRatio);
         }
     }
     rapidRender() { }
@@ -5718,7 +5722,7 @@ class MaskManTower extends TowerBase {
     produceBullet(idx) {
         if (this.multipleTarget[idx] && !this.multipleTarget[idx].isDead) {
             const ratio = this.calculateDamageRatio(this.multipleTarget[idx]);
-            this.bulletCtl.Factory(this.recordDamage.bind(this), this.bulletCtorName, this.position.copy().dithering(this.radius), this.Atk * ratio, this.multipleTarget[idx], this.bulletImage, this.critChance, this.critDamageRatio, this.trapChance, this.trapDuration, this.extraBulletV, Math.random() < this.secKillChance);
+            this.bulletCtl.Factory(this.boundRecordDamage, this.bulletCtorName, this.position.copy().dithering(this.radius), this.Atk * ratio, this.multipleTarget[idx], this.bulletImage, this.critChance, this.critDamageRatio, this.trapChance, this.trapDuration, this.extraBulletV, Math.random() < this.secKillChance);
         }
     }
     run(monsters) {
@@ -5947,7 +5951,7 @@ class PoisonTower extends TowerBase {
     produceBullet() {
         if (this.target) {
             const ratio = this.calculateDamageRatio(this.target);
-            this.bulletCtl.Factory(this.recordDamage.bind(this), this.bulletCtorName, this.position.copy().dithering(this.radius), this.Atk * ratio, this.target, this.bulletImage, this.Patk * ratio, this.Pitv, this.Pdur, this.extraBulletV);
+            this.bulletCtl.Factory(this.boundRecordDamage, this.bulletCtorName, this.position.copy().dithering(this.radius), this.Atk * ratio, this.target, this.bulletImage, this.Patk * ratio, this.Pitv, this.Pdur, this.extraBulletV);
         }
     }
     rapidRender() { }
@@ -6454,7 +6458,7 @@ class EjectBlade extends TowerBase {
     produceBullet() {
         if (this.target) {
             const ratio = this.calculateDamageRatio(this.target);
-            this.bulletCtl.Factory(this.recordDamage.bind(this), this.bulletCtorName, this.position.copy().dithering(this.radius), this.Atk * ratio, this.target, this.bulletImage, this.bounceTime, this.damageFadePerBounce);
+            this.bulletCtl.Factory(this.boundRecordDamage, this.bulletCtorName, this.position.copy().dithering(this.radius), this.Atk * ratio, this.target, this.bulletImage, this.bounceTime, this.damageFadePerBounce);
         }
     }
     rapidRender() { }

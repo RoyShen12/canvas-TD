@@ -216,7 +216,7 @@ class CannonShooter extends TowerBase {
   override produceBullet(): void {
     if (this.target) {
       this.bulletCtl.Factory(
-        this.recordDamage.bind(this),
+        this.boundRecordDamage,
         this.bulletCtorName,
         this.position.copy().dithering(this.radius),
         this.Atk,
@@ -228,7 +228,7 @@ class CannonShooter extends TowerBase {
         this.BrnItv,
         this.BrnDur,
         this.extraBulletV,
-        this.calculateDamageRatio.bind(this)
+        this.boundCalculateDamageRatio
       )
     }
   }

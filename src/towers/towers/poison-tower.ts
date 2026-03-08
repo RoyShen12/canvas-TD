@@ -118,7 +118,7 @@ class PoisonTower extends TowerBase {
     if (this.target) {
       const ratio = this.calculateDamageRatio(this.target)
       this.bulletCtl.Factory(
-        this.recordDamage.bind(this),
+        this.boundRecordDamage,
         this.bulletCtorName,
         this.position.copy().dithering(this.radius),
         this.Atk * ratio,
