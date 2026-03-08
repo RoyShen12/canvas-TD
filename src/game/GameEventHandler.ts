@@ -331,8 +331,6 @@ class GameEventHandler {
       return
     }
 
-    console.log('keyDownHandler: ' + e.key)
-
     switch (e.key) {
       case 'c':
         onLeftClick()
