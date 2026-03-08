@@ -217,12 +217,14 @@ class TeslaTower extends TowerBase {
       return
     }
 
+    const originalStrokeStyle = ctx.strokeStyle
+    const originalLineWidth = ctx.lineWidth
+
     // 渲染电击闪电
     if (this.renderPermit > 0) {
       this.renderPermit--
 
       ctx.strokeStyle = 'rgba(232,33,214,.5)'
-      const originalLineWidth = ctx.lineWidth
       ctx.lineWidth = 1
       ctx.beginPath()
 
@@ -232,7 +234,6 @@ class TeslaTower extends TowerBase {
 
       ctx.closePath()
       ctx.stroke()
-      ctx.lineWidth = originalLineWidth
     }
 
     // 渲染怪物之间的漏电效果
@@ -246,5 +247,8 @@ class TeslaTower extends TowerBase {
 
     ctx.closePath()
     ctx.stroke()
+
+    ctx.strokeStyle = originalStrokeStyle
+    ctx.lineWidth = originalLineWidth
   }
 }

@@ -222,6 +222,7 @@ class FrostTower extends TowerBase {
     if (this.canFreeze) return
 
     // 绘制冻结冷却进度
+    const originalFillStyle = context.fillStyle
     context.fillStyle = 'rgba(25,25,25,.3)'
     RenderUtils.renderSector(
       context,
@@ -232,5 +233,6 @@ class FrostTower extends TowerBase {
       Math.PI * 2 * (1 - (performance.now() - this.lastFreezeTime) / this.freezeInterval),
       false
     ).fill()
+    context.fillStyle = originalFillStyle
   }
 }

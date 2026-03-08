@@ -47,7 +47,7 @@ class RenderUtils {
 
     const corners: BorderPosition[] = ['tr', 'tl', 'br', 'bl']
     corners.forEach(key => {
-      (radius as BorderRadius)[key] = (radius as BorderRadius)[key] || 5
+      (radius as BorderRadius)[key] = (radius as BorderRadius)[key] ?? 5
     })
 
     ctx.beginPath()
@@ -123,6 +123,9 @@ class RenderUtils {
 
     ctx.clearRect(positionTL.x, positionTL.y, width, drawHeight)
 
+    const originalFillStyle = ctx.fillStyle
+    ctx.fillStyle = goodColor
+
     dataArr.forEach((v: number, i: number) => {
       if (v === -1) return
 
@@ -144,6 +147,8 @@ class RenderUtils {
 
       ctx.fillRect(x, y, 1, h)
     })
+
+    ctx.fillStyle = originalFillStyle
   }
 
   /**

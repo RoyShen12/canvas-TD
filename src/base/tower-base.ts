@@ -489,6 +489,7 @@ abstract class TowerBase extends ItemBase {
 
   renderPreparationBar(context: CanvasRenderingContext2D): void {
     if (this.canShoot) return
+    const originalFillStyle = context.fillStyle
     context.fillStyle = 'rgba(25,25,25,.3)'
     RenderUtils.renderSector(
       context,
@@ -499,6 +500,7 @@ abstract class TowerBase extends ItemBase {
       Math.PI * 2 * (1 - (performance.now() - this._lastShootTime) / this.Hst),
       false
     ).fill()
+    context.fillStyle = originalFillStyle
   }
 
   override render(context: CanvasRenderingContext2D): void {

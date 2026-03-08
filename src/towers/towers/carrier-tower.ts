@@ -122,6 +122,7 @@ class CarrierTower extends TowerBase {
       )
 
       this.jetCount++
+      this.recordShootTime()
     }
   }
 

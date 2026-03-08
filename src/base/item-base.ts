@@ -82,6 +82,7 @@ class ItemBase extends CircleBase {
    * 绘制圆填充（当没有图像时）
    */
   private renderFilled(context: CanvasRenderingContext2D): void {
+    const originalFillStyle = context.fillStyle
     if (this.fill) context.fillStyle = this.fill
 
     if (this.radius > 2) {
@@ -94,6 +95,7 @@ class ItemBase extends CircleBase {
       const r = Math.round(this.radius) || 1
       context.fillRect(Math.floor(this.position.x - r / 2), Math.floor(this.position.y - r / 2), r, r)
     }
+    context.fillStyle = originalFillStyle
   }
 
   /**

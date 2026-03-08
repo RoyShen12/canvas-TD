@@ -49,8 +49,8 @@ class GamePathfinder {
   public positionToGridCoordinate(pos: PositionLike): GridCoordinate {
     const rubbed = [Math.round(pos.x), Math.round(pos.y)]
     return {
-      gridX: Math.max(Math.floor(rubbed[1]! / this._gridSize), 0),
-      gridY: Math.max(Math.floor(rubbed[0]! / this._gridSize), 0),
+      gridX: Math.min(Math.max(Math.floor(rubbed[1]! / this._gridSize), 0), this._gridRows - 1),
+      gridY: Math.min(Math.max(Math.floor(rubbed[0]! / this._gridSize), 0), this._gridColumns - 1),
     }
   }
 
@@ -103,6 +103,9 @@ class GamePathfinder {
     if (!startNode || !endNode) {
       return []
     }
+
+    // 清理图的脏状态，确保 A* 搜索从干净状态开始
+    graph.cleanDirty()
 
     const rawPath = Astar.astar.search(graph, startNode, endNode)
 

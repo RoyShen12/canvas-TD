@@ -27,8 +27,11 @@ class TimerManager {
    */
   setTimeout(callback: () => void, ms: number): number {
     const id = window.setTimeout(() => {
-      callback()
-      this.timeouts.delete(id)
+      try {
+        callback()
+      } finally {
+        this.timeouts.delete(id)
+      }
     }, ms)
     this.timeouts.add(id)
     return id

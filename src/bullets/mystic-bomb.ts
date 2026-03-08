@@ -65,7 +65,7 @@ class MysticBomb extends BulletBase {
     this.age++
 
     // 超过存活时间后自动消失
-    if (this.age > this.lifetime) {
+    if (this.age >= this.lifetime) {
       this.fulfilled = true
       return
     }

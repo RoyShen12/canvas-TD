@@ -101,9 +101,16 @@ class Position implements PositionLike {
       if (dx === 0 && dy === 0) {
         return this
       }
-      const speedVec = Vector.unit(dx, dy).multiply(speedValue)
-      this.x += speedVec.x
-      this.y += speedVec.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      // 防止超调：如果速度大于剩余距离，直接移到目标
+      if (speedValue >= dist) {
+        this.x = pos.x
+        this.y = pos.y
+      } else {
+        const invDist = 1 / dist
+        this.x += dx * invDist * speedValue
+        this.y += dy * invDist * speedValue
+      }
     }
     return this
   }
@@ -322,6 +329,9 @@ class Vector extends Position {
    * @returns this（支持链式调用）
    */
   divide(f: number): this {
+    if (f === 0) {
+      throw new Error('Cannot divide vector by zero')
+    }
     const invF = 1 / f
     this.x *= invF
     this.y *= invF

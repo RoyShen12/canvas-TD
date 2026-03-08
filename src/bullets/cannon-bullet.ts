@@ -123,6 +123,10 @@ class CannonBullet extends BulletBase {
     if (this.isReaching) {
       this.hit(this.target, 1, monsters)
       this.fulfilled = true
+    } else if (this.position.outOfBoundary(Position.ORIGIN, this.gameContext.getBoundaryPosition(), BULLET_CONFIG.BOUNDARY_TOLERANCE)) {
+      // 炮弹飞出边界
+      this.fulfilled = true
+      this.target = null
     }
   }
 

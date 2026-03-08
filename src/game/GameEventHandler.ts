@@ -368,14 +368,19 @@ class GameEventHandler {
       case 'Control':
         this._detailFunctionKeyDown = !this._detailFunctionKeyDown
         if (this._statusBoardOnTower) {
-          this._statusBoardOnTower.renderStatusBoard(
-            0,
-            midSplitLineX,
-            0,
-            innerHeight,
-            true,
-            this._detailFunctionKeyDown
-          )
+          // 验证引用的塔仍然存在（未被出售）
+          if (this._statusBoardOnTower.isSold) {
+            this._statusBoardOnTower = null
+          } else {
+            this._statusBoardOnTower.renderStatusBoard(
+              0,
+              midSplitLineX,
+              0,
+              innerHeight,
+              true,
+              this._detailFunctionKeyDown
+            )
+          }
         }
         break
       default:

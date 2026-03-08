@@ -233,10 +233,12 @@ class GameRenderer {
       true,
       '14px Game'
     )
-    this._imageManager
-      .getSprite('gold_spin')!
-      .getClone(2)
-      .renderLoop(this._backgroundCtx as unknown as CanvasRenderingContext2D, new Position(innerWidth - 190, innerHeight - 25), 18, 18)
+    const goldSprite = this._imageManager.getSprite('gold_spin')
+    if (goldSprite) {
+      goldSprite
+        .getClone(2)
+        .renderLoop(this._backgroundCtx as unknown as CanvasRenderingContext2D, new Position(innerWidth - 190, innerHeight - 25), 18, 18)
+    }
 
     const ax = innerWidth - 293
     const ay = innerHeight - 70
@@ -251,10 +253,12 @@ class GameRenderer {
       true,
       '14px Game'
     )
-    this._imageManager
-      .getSprite('sparkle')!
-      .getClone(10)
-      .renderLoop(this._backgroundCtx as unknown as CanvasRenderingContext2D, new Position(innerWidth - 190, innerHeight - 85), 18, 18)
+    const sparkleSprite = this._imageManager.getSprite('sparkle')
+    if (sparkleSprite) {
+      sparkleSprite
+        .getClone(10)
+        .renderLoop(this._backgroundCtx as unknown as CanvasRenderingContext2D, new Position(innerWidth - 190, innerHeight - 85), 18, 18)
+    }
 
     const ax2 = innerWidth - 250
     const ay2 = innerHeight - 40
@@ -342,8 +346,9 @@ class GameRenderer {
    * @param bornStamp 游戏开始时间戳
    */
   public renderGameStats(totalDamage: number, totalKill: number, bornStamp: number | undefined): void {
-    const DPS = bornStamp
-      ? FormatUtils.chineseFormatter((totalDamage / (performance.now() - bornStamp)) * 1000, 3, ' ')
+    const elapsed = bornStamp ? performance.now() - bornStamp : 0
+    const DPS = elapsed > 100
+      ? FormatUtils.chineseFormatter((totalDamage / elapsed) * 1000, 3, ' ')
       : 0
     const DMG = FormatUtils.chineseFormatter(totalDamage, 2, ' ')
     const TK = FormatUtils.chineseFormatter(totalKill, 2, ' ')

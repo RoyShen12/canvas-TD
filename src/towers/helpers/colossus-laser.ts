@@ -133,6 +133,7 @@ class _ColossusLaser {
     path.closePath()
 
     const originalLineWidth = ctx.lineWidth
+    const originalStrokeStyle = ctx.strokeStyle
 
     // 绘制外层
     ctx.strokeStyle = this.lineStylesOuter
@@ -145,5 +146,6 @@ class _ColossusLaser {
     ctx.stroke(path)
 
     ctx.lineWidth = originalLineWidth
+    ctx.strokeStyle = originalStrokeStyle
   }
 }

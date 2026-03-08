@@ -179,8 +179,12 @@ class TimerManager {
     }
     setTimeout(callback, ms) {
         const id = window.setTimeout(() => {
-            callback();
-            this.timeouts.delete(id);
+            try {
+                callback();
+            }
+            finally {
+                this.timeouts.delete(id);
+            }
         }, ms);
         this.timeouts.add(id);
         return id;
@@ -668,7 +672,7 @@ class RenderUtils {
         }
         const corners = ['tr', 'tl', 'br', 'bl'];
         corners.forEach(key => {
-            radius[key] = radius[key] || 5;
+            radius[key] = radius[key] ?? 5;
         });
         ctx.beginPath();
         ctx.moveTo(x + radius.tl, y);
@@ -714,6 +718,8 @@ class RenderUtils {
             this.renderStatisticInitialized.add(name);
         }
         ctx.clearRect(positionTL.x, positionTL.y, width, drawHeight);
+        const originalFillStyle = ctx.fillStyle;
+        ctx.fillStyle = goodColor;
         dataArr.forEach((v, i) => {
             if (v === -1)
                 return;
@@ -736,6 +742,7 @@ class RenderUtils {
             }
             ctx.fillRect(x, y, 1, h);
         });
+        ctx.fillStyle = originalFillStyle;
     }
     static resetStatisticState(name) {
         if (name) {
@@ -863,9 +870,16 @@ class Position {
             if (dx === 0 && dy === 0) {
                 return this;
             }
-            const speedVec = Vector.unit(dx, dy).multiply(speedValue);
-            this.x += speedVec.x;
-            this.y += speedVec.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (speedValue >= dist) {
+                this.x = pos.x;
+                this.y = pos.y;
+            }
+            else {
+                const invDist = 1 / dist;
+                this.x += dx * invDist * speedValue;
+                this.y += dy * invDist * speedValue;
+            }
         }
         return this;
     }
@@ -965,6 +979,9 @@ class Vector extends Position {
         return this;
     }
     divide(f) {
+        if (f === 0) {
+            throw new Error('Cannot divide vector by zero');
+        }
         const invF = 1 / f;
         this.x *= invF;
         this.y *= invF;
@@ -2416,6 +2433,7 @@ class ItemBase extends CircleBase {
         }
     }
     renderFilled(context) {
+        const originalFillStyle = context.fillStyle;
         if (this.fill)
             context.fillStyle = this.fill;
         if (this.radius > 2) {
@@ -2428,6 +2446,7 @@ class ItemBase extends CircleBase {
             const r = Math.round(this.radius) || 1;
             context.fillRect(Math.floor(this.position.x - r / 2), Math.floor(this.position.y - r / 2), r, r);
         }
+        context.fillStyle = originalFillStyle;
     }
     render(context, _imgCtrl) {
         super.renderBorder(context);
@@ -2781,8 +2800,10 @@ class TowerBase extends ItemBase {
     renderPreparationBar(context) {
         if (this.canShoot)
             return;
+        const originalFillStyle = context.fillStyle;
         context.fillStyle = 'rgba(25,25,25,.3)';
         RenderUtils.renderSector(context, this.position.x, this.position.y, this.radius, 0, Math.PI * 2 * (1 - (performance.now() - this._lastShootTime) / this.Hst), false).fill();
+        context.fillStyle = originalFillStyle;
     }
     render(context) {
         super.render(context);
@@ -3456,6 +3477,10 @@ class CannonBullet extends BulletBase {
             this.hit(this.target, 1, monsters);
             this.fulfilled = true;
         }
+        else if (this.position.outOfBoundary(Position.ORIGIN, this.gameContext.getBoundaryPosition(), BULLET_CONFIG.BOUNDARY_TOLERANCE)) {
+            this.fulfilled = true;
+            this.target = null;
+        }
     }
     hit(monster, _magnification = 1, monsters) {
         if (monster) {
@@ -3647,7 +3672,7 @@ class MysticBomb extends BulletBase {
     }
     run(monsters) {
         this.age++;
-        if (this.age > this.lifetime) {
+        if (this.age >= this.lifetime) {
             this.fulfilled = true;
             return;
         }
@@ -5135,6 +5160,7 @@ class _ColossusLaser {
         path.lineTo(stepEndPos.x, stepEndPos.y);
         path.closePath();
         const originalLineWidth = ctx.lineWidth;
+        const originalStrokeStyle = ctx.strokeStyle;
         ctx.strokeStyle = this.lineStylesOuter;
         ctx.lineWidth = this.lineWidth + 2;
         ctx.stroke(path);
@@ -5142,6 +5168,7 @@ class _ColossusLaser {
         ctx.lineWidth = this.lineWidth - 2;
         ctx.stroke(path);
         ctx.lineWidth = originalLineWidth;
+        ctx.strokeStyle = originalStrokeStyle;
     }
 }
 class _Jet extends TowerBase {
@@ -5829,8 +5856,10 @@ class FrostTower extends TowerBase {
     rapidRender(context) {
         if (this.canFreeze)
             return;
+        const originalFillStyle = context.fillStyle;
         context.fillStyle = 'rgba(25,25,25,.3)';
         RenderUtils.renderSector(context, this.position.x, this.position.y, this.radius, 0, Math.PI * 2 * (1 - (performance.now() - this.lastFreezeTime) / this.freezeInterval), false).fill();
+        context.fillStyle = originalFillStyle;
     }
 }
 class PoisonTower extends TowerBase {
@@ -6035,10 +6064,11 @@ class TeslaTower extends TowerBase {
         if (monsters.every(m => m.isDead || !this.inRange(m))) {
             return;
         }
+        const originalStrokeStyle = ctx.strokeStyle;
+        const originalLineWidth = ctx.lineWidth;
         if (this.renderPermit > 0) {
             this.renderPermit--;
             ctx.strokeStyle = 'rgba(232,33,214,.5)';
-            const originalLineWidth = ctx.lineWidth;
             ctx.lineWidth = 1;
             ctx.beginPath();
             for (let i = 0; i < this.lighteningAmount; i++) {
@@ -6046,7 +6076,6 @@ class TeslaTower extends TowerBase {
             }
             ctx.closePath();
             ctx.stroke();
-            ctx.lineWidth = originalLineWidth;
         }
         ctx.strokeStyle = 'rgba(153,204,255,.5)';
         ctx.beginPath();
@@ -6056,6 +6085,8 @@ class TeslaTower extends TowerBase {
         });
         ctx.closePath();
         ctx.stroke();
+        ctx.strokeStyle = originalStrokeStyle;
+        ctx.lineWidth = originalLineWidth;
     }
 }
 class BlackMagicTower extends TowerBase {
@@ -6362,6 +6393,7 @@ class CarrierTower extends TowerBase {
         if (this.canShoot && this.jetCount < this.KidCount) {
             Game.callTowerFactory()('CarrierTower.Jet', this.position.copy().dithering(this.radius * 2, this.radius), Game.callImageBitMap(TowerManager.CarrierTower.cn), null, Game.callGridSideSize() / 4, this);
             this.jetCount++;
+            this.recordShootTime();
         }
     }
     renderRange() {
@@ -7144,8 +7176,8 @@ class GamePathfinder {
     positionToGridCoordinate(pos) {
         const rubbed = [Math.round(pos.x), Math.round(pos.y)];
         return {
-            gridX: Math.max(Math.floor(rubbed[1] / this._gridSize), 0),
-            gridY: Math.max(Math.floor(rubbed[0] / this._gridSize), 0),
+            gridX: Math.min(Math.max(Math.floor(rubbed[1] / this._gridSize), 0), this._gridRows - 1),
+            gridY: Math.min(Math.max(Math.floor(rubbed[0] / this._gridSize), 0), this._gridColumns - 1),
         };
     }
     getGridInfoAtPosition(pos, midSplitLineX) {
@@ -7174,6 +7206,7 @@ class GamePathfinder {
         if (!startNode || !endNode) {
             return [];
         }
+        graph.cleanDirty();
         const rawPath = Astar.astar.search(graph, startNode, endNode);
         const path = rawPath.map(node => ({
             x: (node.y - 0.5) * this._gridSize,
@@ -7337,17 +7370,21 @@ class GameRenderer {
         const ax0 = innerWidth - 236;
         const ay0 = innerHeight - 10;
         this._canvasManager.refreshText('金币', null, new Position(ax0, ay0), new Position(ax0 - 4, ay0 - 20), 160, 26, 'rgba(54,54,54,1)', true, '14px Game');
-        this._imageManager
-            .getSprite('gold_spin')
-            .getClone(2)
-            .renderLoop(this._backgroundCtx, new Position(innerWidth - 190, innerHeight - 25), 18, 18);
+        const goldSprite = this._imageManager.getSprite('gold_spin');
+        if (goldSprite) {
+            goldSprite
+                .getClone(2)
+                .renderLoop(this._backgroundCtx, new Position(innerWidth - 190, innerHeight - 25), 18, 18);
+        }
         const ax = innerWidth - 293;
         const ay = innerHeight - 70;
         this._canvasManager.refreshText(GemBase.gemName + '点数', null, new Position(ax, ay), new Position(ax - 4, ay - 20), 160, 26, 'rgba(54,54,54,1)', true, '14px Game');
-        this._imageManager
-            .getSprite('sparkle')
-            .getClone(10)
-            .renderLoop(this._backgroundCtx, new Position(innerWidth - 190, innerHeight - 85), 18, 18);
+        const sparkleSprite = this._imageManager.getSprite('sparkle');
+        if (sparkleSprite) {
+            sparkleSprite
+                .getClone(10)
+                .renderLoop(this._backgroundCtx, new Position(innerWidth - 190, innerHeight - 85), 18, 18);
+        }
         const ax2 = innerWidth - 250;
         const ay2 = innerHeight - 40;
         this._canvasManager.refreshText('生命值', null, new Position(ax2, ay2), new Position(ax2 - 4, ay2 - 20), 160, 26, 'rgba(54,54,54,1)', true, '14px Game');
@@ -7372,8 +7409,9 @@ class GameRenderer {
         this._canvasManager.refreshText(FormatUtils.formatterUs.format(gemPoints), null, new Position(ax, ay), new Position(ax - 4, ay - 20), 160, 26, 'rgb(24,24,24)', true, '14px Game');
     }
     renderGameStats(totalDamage, totalKill, bornStamp) {
-        const DPS = bornStamp
-            ? FormatUtils.chineseFormatter((totalDamage / (performance.now() - bornStamp)) * 1000, 3, ' ')
+        const elapsed = bornStamp ? performance.now() - bornStamp : 0;
+        const DPS = elapsed > 100
+            ? FormatUtils.chineseFormatter((totalDamage / elapsed) * 1000, 3, ' ')
             : 0;
         const DMG = FormatUtils.chineseFormatter(totalDamage, 2, ' ');
         const TK = FormatUtils.chineseFormatter(totalKill, 2, ' ');
@@ -7631,7 +7669,12 @@ class GameEventHandler {
             case 'Control':
                 this._detailFunctionKeyDown = !this._detailFunctionKeyDown;
                 if (this._statusBoardOnTower) {
-                    this._statusBoardOnTower.renderStatusBoard(0, midSplitLineX, 0, innerHeight, true, this._detailFunctionKeyDown);
+                    if (this._statusBoardOnTower.isSold) {
+                        this._statusBoardOnTower = null;
+                    }
+                    else {
+                        this._statusBoardOnTower.renderStatusBoard(0, midSplitLineX, 0, innerHeight, true, this._detailFunctionKeyDown);
+                    }
                 }
                 break;
             default:
