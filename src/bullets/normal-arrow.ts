@@ -89,8 +89,8 @@ class NormalArrow extends BulletBase {
     monster.applyDamage(damage)
     this.emitter(monster)
 
-    // 触发束缚
-    if (this.willTrap) {
+    // 触发束缚（仅对存活目标）
+    if (this.willTrap && !monster.isDead) {
       // 将毫秒转换为帧数 (假设 60fps)
       const frameDuration = (this.trapDuration / 1000) * 60
       monster.registerImprison(frameDuration)

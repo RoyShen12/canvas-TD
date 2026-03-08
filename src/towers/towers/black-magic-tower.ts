@@ -156,10 +156,12 @@ class BlackMagicTower extends TowerBase {
         }
       }
 
-      // 调试模式强化
+      // 调试模式强化（受同样的上限约束）
       if (__debug_black_magic_tower_always_enhance) {
         this.imprecationPower += MAGIC_CONSTANTS.KILL_POWER_BONUS
-        this.imprecationHaste += MAGIC_CONSTANTS.KILL_HASTE_BONUS
+        if (this.imprecationHaste * 100 - 100 < MAGIC_CONSTANTS.MAX_HASTE_BONUS_PERCENT) {
+          this.imprecationHaste += MAGIC_CONSTANTS.KILL_HASTE_BONUS
+        }
       }
 
       // 诅咒目标（仅对存活目标）

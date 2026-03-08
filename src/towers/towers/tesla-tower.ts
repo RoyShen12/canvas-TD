@@ -167,6 +167,10 @@ class TeslaTower extends TowerBase {
 
   override run(monsters: MonsterBase[]): void {
     if (this.canShoot) {
+      // 先检查是否有可攻击目标，避免空射浪费冷却
+      const hasTarget = monsters.some(mst => !mst.isDead && this.inRange(mst))
+      if (!hasTarget) return
+
       // 电击塔不调用父类 shoot，故主动挂载 gem 钩子
       this.gemAttackHook(monsters)
 
@@ -232,7 +236,6 @@ class TeslaTower extends TowerBase {
         this.renderLightening(ctx)
       }
 
-      ctx.closePath()
       ctx.stroke()
     }
 
@@ -245,7 +248,6 @@ class TeslaTower extends TowerBase {
       return --item.time > 0
     })
 
-    ctx.closePath()
     ctx.stroke()
 
     ctx.strokeStyle = originalStrokeStyle

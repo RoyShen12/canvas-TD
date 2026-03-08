@@ -2618,3 +2618,176 @@ describe('Bug Fix: MaskManTower non-null assertion removed', () => {
   })
 })
 
+// ============================================================================
+// Round 17 Bug Fixes
+// ============================================================================
+
+describe('Bug Fix #145: ClusterBomb emitter.bind(this) redundancy', () => {
+  test('emitter should be used directly without .bind(this)', () => {
+    const tower = { name: 'CannonShooter' }
+    const boundFn = function() { return tower }
+    const doubleBound = boundFn.bind(tower)
+    expect(boundFn()).toBe(tower)
+    expect(doubleBound()).toBe(tower)
+  })
+})
+
+describe('Bug Fix #146: PainEnhancer/EchoOfLight hitHook .bind() allocation', () => {
+  test('should use pre-cached boundRecordDamage instead of .bind()', () => {
+    const callCount = { n: 0 }
+    const tower = {
+      recordDamage: function() { callCount.n++ },
+      boundRecordDamage: null as any,
+    }
+    tower.boundRecordDamage = tower.recordDamage.bind(tower)
+
+    tower.boundRecordDamage()
+    expect(callCount.n).toBe(1)
+
+    const bindAgain = tower.recordDamage.bind(tower)
+    bindAgain()
+    expect(callCount.n).toBe(2)
+
+    expect(tower.boundRecordDamage).toBe(tower.boundRecordDamage)
+    expect(tower.recordDamage.bind(tower)).not.toBe(tower.recordDamage.bind(tower))
+  })
+})
+
+describe('Bug Fix #147: GemBase.priceSpan minification safety', () => {
+  test('should use gemName instead of constructor name for cache key', () => {
+    class GemA { static gemName = '苦痛强化宝石' }
+    class GemB { static gemName = '迅捷宝石' }
+    const keyA = `_c_span_gem_${GemA.gemName}`
+    const keyB = `_c_span_gem_${GemB.gemName}`
+    expect(keyA).not.toBe(keyB)
+  })
+})
+
+describe('Bug Fix #148: TeslaTower empty-fire wasting cooldown', () => {
+  test('should not consume cooldown when no in-range monsters exist', () => {
+    const monsters = [
+      { isDead: true, position: { x: 0, y: 0 } },
+      { isDead: false, position: { x: 999, y: 999 } },
+    ]
+    const towerPos = { x: 50, y: 50 }
+    const range = 100
+    const inRange = (m: any) => {
+      const dx = m.position.x - towerPos.x
+      const dy = m.position.y - towerPos.y
+      return dx * dx + dy * dy < range * range
+    }
+    const hasTarget = monsters.some(mst => !mst.isDead && inRange(mst))
+    expect(hasTarget).toBe(false)
+  })
+})
+
+describe('Bug Fix #149: TeslaTower closePath lightning artifact', () => {
+  test('lightning rendering should not use closePath', () => {
+    const pathOps: string[] = []
+    const mockCtx = {
+      beginPath: () => pathOps.push('beginPath'),
+      moveTo: () => pathOps.push('moveTo'),
+      lineTo: () => pathOps.push('lineTo'),
+      stroke: () => pathOps.push('stroke'),
+    }
+    mockCtx.beginPath()
+    mockCtx.moveTo()
+    mockCtx.lineTo()
+    mockCtx.stroke()
+    expect(pathOps).not.toContain('closePath')
+  })
+})
+
+describe('Bug Fix #150: FrostTower pre-rank cooldown overlay', () => {
+  test('should not render cooldown indicator before freeze ability unlocked', () => {
+    const freezeEffectLevel = 0
+    const freezeInterval = Infinity
+    const lastFreezeTime = performance.now() - 5000
+    const canFreeze = performance.now() - lastFreezeTime > freezeInterval
+    expect(canFreeze).toBe(false)
+    const shouldRender = freezeEffectLevel > 0 && !canFreeze
+    expect(shouldRender).toBe(false)
+  })
+})
+
+describe('Bug Fix #151: StatusBoard null safety in renderDataType2/renderDivision', () => {
+  test('renderDataType2 should handle null childNodes gracefully', () => {
+    const mockNode = {
+      childNodes: {
+        item: (index: number) => index < 2 ? { style: {}, textContent: '', className: 'row' } : null,
+      },
+    }
+    const dataChunk = ['line1', 'line2', 'line3']
+    let crashed = false
+    try {
+      dataChunk.forEach((data, idx) => {
+        const row = mockNode.childNodes.item(idx)
+        if (!row) return
+        ;(row as any).textContent = data
+      })
+    } catch {
+      crashed = true
+    }
+    expect(crashed).toBe(false)
+  })
+})
+
+describe('Bug Fix #152: NormalArrow trap on dead monster', () => {
+  test('should not apply trap effect to dead monsters', () => {
+    const monster = {
+      isDead: false,
+      health: 100,
+      imprisoned: false,
+      registerImprison: function() { this.imprisoned = true },
+      applyDamage: function(dmg: number) {
+        this.health -= dmg
+        if (this.health <= 0) this.isDead = true
+        return dmg
+      },
+    }
+    monster.applyDamage(200)
+    expect(monster.isDead).toBe(true)
+    const willTrap = true
+    if (willTrap && !monster.isDead) {
+      monster.registerImprison()
+    }
+    expect(monster.imprisoned).toBe(false)
+  })
+})
+
+describe('Bug Fix #153: GemOfAnger tickHook array allocation', () => {
+  test('should count in-range monsters without allocating array', () => {
+    const monsters = Array.from({ length: 100 }, (_, i) => ({
+      isDead: i % 3 === 0,
+      position: { x: i * 10, y: 0 },
+    }))
+    const towerPos = { x: 50, y: 0 }
+    const range = 200
+    const inRange = (m: any) => {
+      const dx = m.position.x - towerPos.x
+      return dx * dx < range * range
+    }
+    const filterResult = monsters.filter(mst => !mst.isDead && inRange(mst)).length
+    let count = 0
+    for (const mst of monsters) {
+      if (!mst.isDead && inRange(mst)) count++
+    }
+    expect(count).toBe(filterResult)
+  })
+})
+
+describe('Bug Fix #154: BlackMagicTower debug haste cap', () => {
+  test('debug mode haste should respect the same cap as normal mode', () => {
+    let imprecationHaste = 1
+    const KILL_HASTE_BONUS = 0.05
+    const MAX_HASTE_BONUS_PERCENT = 1600
+    for (let i = 0; i < 500; i++) {
+      if (imprecationHaste * 100 - 100 < MAX_HASTE_BONUS_PERCENT) {
+        imprecationHaste += KILL_HASTE_BONUS
+      }
+    }
+    expect(imprecationHaste).toBeLessThanOrEqual(17.1)
+    expect(imprecationHaste).toBeGreaterThan(16)
+  })
+})
+

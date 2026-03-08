@@ -306,7 +306,7 @@ class ClusterBomb extends CannonBullet {
             this.burnDotInterval,
             this.burnDotDamage * ratio,
             false,
-            this.emitter.bind(this)
+            this.emitter
           )
         }
       }

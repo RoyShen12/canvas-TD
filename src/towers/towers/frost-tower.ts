@@ -219,7 +219,8 @@ class FrostTower extends TowerBase {
   }
 
   rapidRender(context: CanvasRenderingContext2D): void {
-    if (this.canFreeze) return
+    // 未解锁冻结能力（等级不足）或冻结已就绪时不渲染冷却指示器
+    if (this.freezeEffectLevel === 0 || this.canFreeze) return
 
     // 绘制冻结冷却进度
     const originalFillStyle = context.fillStyle

@@ -117,6 +117,7 @@ class StatusBoardRenderer {
   private static renderDataType2(rootNode: Node, dataChunk: string[], offset: number): void {
     dataChunk.forEach((data, idx) => {
       const row = rootNode.childNodes.item(idx + offset) as HTMLElement
+      if (!row) return
       DomUtils.removeNodeTextAndStyle(row)
       DomUtils.removeAllChildren(row)
       if (data.includes('+')) row.style.color = 'rgba(204,51,51,1)'
@@ -131,6 +132,7 @@ class StatusBoardRenderer {
    */
   private static renderDivision(rootNode: Node, offset: number): void {
     const div = rootNode.childNodes.item(offset) as HTMLElement
+    if (!div) return
     DomUtils.removeAllChildren(div)
     DomUtils.removeNodeTextAndStyle(div, 'division')
   }

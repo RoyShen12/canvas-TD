@@ -1056,6 +1056,8 @@ class StatusBoardRenderer {
     static renderDataType2(rootNode, dataChunk, offset) {
         dataChunk.forEach((data, idx) => {
             const row = rootNode.childNodes.item(idx + offset);
+            if (!row)
+                return;
             DomUtils.removeNodeTextAndStyle(row);
             DomUtils.removeAllChildren(row);
             if (data.includes('+'))
@@ -1069,6 +1071,8 @@ class StatusBoardRenderer {
     }
     static renderDivision(rootNode, offset) {
         const div = rootNode.childNodes.item(offset);
+        if (!div)
+            return;
         DomUtils.removeAllChildren(div);
         DomUtils.removeNodeTextAndStyle(div, 'division');
     }
@@ -1498,7 +1502,7 @@ class GemBase {
     static price = 0;
     static imgSrc = '';
     static get priceSpan() {
-        const key = `_c_span_gem_${this.name}`;
+        const key = `_c_span_gem_${this.gemName}`;
         if (DomUtils._cache.has(key)) {
             return DomUtils._cache.get(key);
         }
@@ -1596,7 +1600,7 @@ class PainEnhancer extends GemBase {
         if (monster.isDead)
             return;
         if (Math.random() < PainEnhancer.chance) {
-            DOTManager.installDOT(monster, 'beBloodied', this.bleedDuration, this.bleedInterval, Math.round((thisTower.Atk * this.bleedDamageRatio) / this.bleedDotCount), false, thisTower.recordDamage.bind(thisTower));
+            DOTManager.installDOT(monster, 'beBloodied', this.bleedDuration, this.bleedInterval, Math.round((thisTower.Atk * this.bleedDamageRatio) / this.bleedDotCount), false, thisTower.boundRecordDamage);
         }
     }
 }
@@ -1977,7 +1981,11 @@ class GemOfAnger extends GemBase {
         return GemOfAnger.baseDamageAdditionPerEnemy + this.level * GemOfAnger.damageAdditionPerEnemyLevelMx;
     }
     tickHook(thisTower, monsters) {
-        const inRangeCount = monsters.filter(mst => !mst.isDead && thisTower.inRange(mst)).length;
+        let inRangeCount = 0;
+        for (const mst of monsters) {
+            if (!mst.isDead && thisTower.inRange(mst))
+                inRangeCount++;
+        }
         thisTower._angerGemAtkRatio = this.damageAdditionPerEnemy * inRangeCount + 1;
     }
 }
@@ -3406,7 +3414,7 @@ class NormalArrow extends BulletBase {
         const damage = this.Atk * critMagnification * (1 - monster.armorResistance * armorEffectiveness);
         monster.applyDamage(damage);
         this.emitter(monster);
-        if (this.willTrap) {
+        if (this.willTrap && !monster.isDead) {
             const frameDuration = (this.trapDuration / 1000) * 60;
             monster.registerImprison(frameDuration);
         }
@@ -3573,7 +3581,7 @@ class ClusterBomb extends CannonBullet {
                 this.emitter(m);
                 if (!processedMonsters.has(m.id)) {
                     processedMonsters.add(m.id);
-                    DOTManager.installDOT(m, 'beBurned', this.burnDotDuration, this.burnDotInterval, this.burnDotDamage * ratio, false, this.emitter.bind(this));
+                    DOTManager.installDOT(m, 'beBurned', this.burnDotDuration, this.burnDotInterval, this.burnDotDamage * ratio, false, this.emitter);
                 }
             }
         }
@@ -5880,7 +5888,7 @@ class FrostTower extends TowerBase {
         super.render(ctx);
     }
     rapidRender(context) {
-        if (this.canFreeze)
+        if (this.freezeEffectLevel === 0 || this.canFreeze)
             return;
         const originalFillStyle = context.fillStyle;
         context.fillStyle = 'rgba(25,25,25,.3)';
@@ -6056,6 +6064,9 @@ class TeslaTower extends TowerBase {
     }
     run(monsters) {
         if (this.canShoot) {
+            const hasTarget = monsters.some(mst => !mst.isDead && this.inRange(mst));
+            if (!hasTarget)
+                return;
             this.gemAttackHook(monsters);
             this.renderPermit = TeslaTower.shockRenderFrames;
             let shockCount = 0;
@@ -6100,7 +6111,6 @@ class TeslaTower extends TowerBase {
             for (let i = 0; i < this.lighteningAmount; i++) {
                 this.renderLightening(ctx);
             }
-            ctx.closePath();
             ctx.stroke();
         }
         ctx.strokeStyle = 'rgba(153,204,255,.5)';
@@ -6109,7 +6119,6 @@ class TeslaTower extends TowerBase {
             TeslaTower.renderLighteningCop(ctx, ...item.args);
             return --item.time > 0;
         });
-        ctx.closePath();
         ctx.stroke();
         ctx.strokeStyle = originalStrokeStyle;
         ctx.lineWidth = originalLineWidth;
@@ -6210,7 +6219,9 @@ class BlackMagicTower extends TowerBase {
             }
             if (__debug_black_magic_tower_always_enhance) {
                 this.imprecationPower += MAGIC_CONSTANTS.KILL_POWER_BONUS;
-                this.imprecationHaste += MAGIC_CONSTANTS.KILL_HASTE_BONUS;
+                if (this.imprecationHaste * 100 - 100 < MAGIC_CONSTANTS.MAX_HASTE_BONUS_PERCENT) {
+                    this.imprecationHaste += MAGIC_CONSTANTS.KILL_HASTE_BONUS;
+                }
             }
             if (!this.target.isDead) {
                 this.target.registerImprecate((this.Idr / 1000) * 60, this.Ide);

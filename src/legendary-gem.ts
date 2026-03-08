@@ -38,7 +38,7 @@ abstract class GemBase {
   static readonly imgSrc: string = ''
 
   static get priceSpan(): [Node, Node] {
-    const key = `_c_span_gem_${this.name}`
+    const key = `_c_span_gem_${this.gemName}`
     if (DomUtils._cache.has(key)) {
       return DomUtils._cache.get(key) as [Node, Node]
     } else {
@@ -184,7 +184,7 @@ class PainEnhancer extends GemBase {
         this.bleedInterval,
         Math.round((thisTower.Atk * this.bleedDamageRatio) / this.bleedDotCount),
         false,
-        thisTower.recordDamage.bind(thisTower)
+        thisTower.boundRecordDamage
       )
     }
   }
@@ -695,8 +695,10 @@ class GemOfAnger extends GemBase {
    * @todo 如果这个钩子函数负担过重可以减少调用频率
    */
   override tickHook(thisTower: TowerBase, monsters: MonsterBase[]) {
-    const inRangeCount = monsters.filter(mst => !mst.isDead && thisTower.inRange(mst)).length
-    // console.log('inRangeCount', inRangeCount)
+    let inRangeCount = 0
+    for (const mst of monsters) {
+      if (!mst.isDead && thisTower.inRange(mst)) inRangeCount++
+    }
     thisTower._angerGemAtkRatio = this.damageAdditionPerEnemy * inRangeCount + 1
   }
 }
