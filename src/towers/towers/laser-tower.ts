@@ -206,10 +206,11 @@ class LaserTower extends TowerBase {
     this.recordDamage(this.target)
 
     // 对区域内怪物造成火焰伤害
-    const bgContext = Game.callCanvasContext('bg') as WrappedCanvasRenderingContext2D
+    // 使用离屏 canvas 上下文进行 isPointInPath 检测（无 DPI 缩放）
+    const offCtx = Game.callCanvasContext('off_screen_render') as WrappedCanvasRenderingContext2D
     monsters.forEach(mst => {
       if (mst.isDead) return
-      if (bgContext.isPointInPath(flameArea, mst.position.x, mst.position.y) && this.target) {
+      if (offCtx.isPointInPath(flameArea, mst.position.x, mst.position.y) && this.target) {
         // 电浆伤害 (无视防御)
         if (this.extraLuminousDamage > 0) {
           mst.applyDamage(this.extraLuminousDamage * this.calculateDamageRatio(mst))

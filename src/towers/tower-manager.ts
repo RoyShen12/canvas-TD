@@ -9,7 +9,7 @@
 
 class _TowerManager {
   /** 独立塔类名列表 (如载机) */
-  private static independentCtors = ['_Jet']
+  private static independentCtors = ['CarrierTower.Jet']
 
   /** 塔配置数组 */
   static towerCtors = towerCtors
@@ -55,8 +55,8 @@ class _TowerManager {
     const ctor = TowerRegistry.getOrThrow(towerName)
     const newTower = new ctor(position, image, bulletImage, radius, ...extraArgs) as TowerBase
 
-    // 根据塔类型分配到对应列表
-    const isIndependent = (_TowerManager.independentCtors as readonly string[]).includes(newTower.constructor.name)
+    // 根据注册名称判断是否为独立塔（如载机），避免依赖 constructor.name（minification 不安全）
+    const isIndependent = (_TowerManager.independentCtors as readonly string[]).includes(towerName)
     if (isIndependent) {
       this.independentTowers.push(newTower)
     } else {

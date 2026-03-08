@@ -3212,6 +3212,7 @@ class BulletBase extends ItemBase {
     target;
     fulfilled = false;
     emitter = () => { };
+    registryName = '';
     constructor(position, radius, borderWidth, borderStyle, image, atk, speed, target) {
         super(position, radius, borderWidth, borderStyle, image);
         this.Atk = atk;
@@ -3349,6 +3350,7 @@ class BulletManager {
         }
         const bullet = new ctor(position, atk, target, image, ...extraArgs);
         bullet.setDamageEmitter(emitter);
+        bullet.registryName = bulletName;
         this.bullets.push(bullet);
         return bullet;
     }
@@ -4521,7 +4523,7 @@ const towerCtors = [
     }
 ];
 class _TowerManager {
-    static independentCtors = ['_Jet'];
+    static independentCtors = ['CarrierTower.Jet'];
     static towerCtors = towerCtors;
     static rankPostfixL1 = TOWER_RANK_NAMES.VETERAN;
     static rankPostfixL2 = TOWER_RANK_NAMES.ELITE;
@@ -4542,7 +4544,7 @@ class _TowerManager {
     Factory(towerName, position, image, bulletImage, radius, ...extraArgs) {
         const ctor = TowerRegistry.getOrThrow(towerName);
         const newTower = new ctor(position, image, bulletImage, radius, ...extraArgs);
-        const isIndependent = _TowerManager.independentCtors.includes(newTower.constructor.name);
+        const isIndependent = _TowerManager.independentCtors.includes(towerName);
         if (isIndependent) {
             this.independentTowers.push(newTower);
         }
@@ -5920,7 +5922,7 @@ class PoisonTower extends TowerBase {
         const aliveTargets = targetList.filter(m => !m.isDead);
         const unPoisoned = aliveTargets.filter(m => !m.bePoisoned);
         const unTargeted = unPoisoned.filter(m => {
-            return !this.bulletCtl.bullets.some(b => b.constructor.name === this.bulletCtorName && b.target === m);
+            return !this.bulletCtl.bullets.some(b => b.registryName === this.bulletCtorName && b.target === m);
         });
         for (const t of unTargeted) {
             if (this.inRange(t)) {
@@ -6335,11 +6337,11 @@ class LaserTower extends TowerBase {
         }
         this.target.applyDamage(this.Atk * (1 - this.target.armorResistance) * this.calculateDamageRatio(this.target));
         this.recordDamage(this.target);
-        const bgContext = Game.callCanvasContext('bg');
+        const offCtx = Game.callCanvasContext('off_screen_render');
         monsters.forEach(mst => {
             if (mst.isDead)
                 return;
-            if (bgContext.isPointInPath(flameArea, mst.position.x, mst.position.y) && this.target) {
+            if (offCtx.isPointInPath(flameArea, mst.position.x, mst.position.y) && this.target) {
                 if (this.extraLuminousDamage > 0) {
                     mst.applyDamage(this.extraLuminousDamage * this.calculateDamageRatio(mst));
                     if (mst.lastAbsDmg > 0)
@@ -8198,7 +8200,6 @@ class Game extends Base {
     _life;
     _towerForSelect = [];
     _grids = [];
-    _posPathMapping = new Map();
     _midSplitLineX = -1;
     _gemPoints;
     _loopSpeeds;
@@ -8484,7 +8485,6 @@ class Game extends Base {
             }
         }
         this._pathfinder.invalidatePathsThrough(gridInfo.gridX, gridInfo.gridY);
-        this._posPathMapping.clear();
     }
     _removeTower(tower) {
         tower.isSold = true;
@@ -8493,7 +8493,6 @@ class Game extends Base {
                 this._grids[tower._gridIx][tower._gridIy] = 1;
             }
             this._pathfinder.invalidatePathsThrough(tower._gridIx, tower._gridIy);
-            this._posPathMapping.clear();
         }
     }
     _spawnMonster(level, pos, ctorName) {
@@ -8589,16 +8588,7 @@ class Game extends Base {
         this.updateLife(delta);
     }
     getPathToEnd(startPos) {
-        const gridInfo = this._pathfinder.getGridInfoAtPosition(startPos, Infinity);
-        if (!gridInfo)
-            return [];
-        const key = `${gridInfo.gridX}|${gridInfo.gridY}`;
-        if (this._posPathMapping.has(key)) {
-            return this._posPathMapping.get(key);
-        }
-        const path = this._pathfinder.findPath(startPos, this._grids, this._wallBoundary);
-        this._posPathMapping.set(key, path);
-        return path;
+        return this._pathfinder.findPath(startPos, this._grids, this._wallBoundary);
     }
     _renderOnce() {
         this._renderer.renderBackground({

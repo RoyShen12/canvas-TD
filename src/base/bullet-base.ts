@@ -18,6 +18,8 @@ abstract class BulletBase extends ItemBase {
   public fulfilled = false
   /** 伤害记录回调 */
   protected emitter: (monster: MonsterBase) => void = () => {}
+  /** 注册名称（用于类型识别，避免依赖 constructor.name） */
+  public registryName = ''
 
   constructor(
     position: Position,

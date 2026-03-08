@@ -269,9 +269,6 @@ class Game extends Base {
   /** 游戏网格（0=障碍，1=可通行） */
   private _grids: number[][] = []
 
-  /** 路径缓存映射 */
-  private _posPathMapping = new Map<string, PositionLike[]>()
-
   /** 左右区域分割线 X 坐标 */
   private _midSplitLineX = -1
 
@@ -796,7 +793,6 @@ class Game extends Base {
     }
 
     this._pathfinder.invalidatePathsThrough(gridInfo.gridX, gridInfo.gridY)
-    this._posPathMapping.clear()
   }
 
   /**
@@ -810,7 +806,6 @@ class Game extends Base {
         this._grids[tower._gridIx]![tower._gridIy] = 1
       }
       this._pathfinder.invalidatePathsThrough(tower._gridIx, tower._gridIy)
-      this._posPathMapping.clear()
     }
   }
 
@@ -969,18 +964,7 @@ class Game extends Base {
    * @returns 路径点数组
    */
   public getPathToEnd(startPos: Position): PositionLike[] {
-    const gridInfo = this._pathfinder.getGridInfoAtPosition(startPos, Infinity)
-    if (!gridInfo) return []
-
-    const key = `${gridInfo.gridX}|${gridInfo.gridY}`
-
-    if (this._posPathMapping.has(key)) {
-      return this._posPathMapping.get(key)!
-    }
-
-    const path = this._pathfinder.findPath(startPos, this._grids, this._wallBoundary)
-    this._posPathMapping.set(key, path)
-    return path
+    return this._pathfinder.findPath(startPos, this._grids, this._wallBoundary)
   }
 
   // ============================================================================

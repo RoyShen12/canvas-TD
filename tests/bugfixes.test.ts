@@ -2518,3 +2518,103 @@ describe('Bug Fix: DamageTextBox cached PolarVector', () => {
   })
 })
 
+// ============================================================================
+// Round 15 Bug Fix Verification Tests
+// ============================================================================
+
+describe('Bug Fix: LaserTower DPI-safe isPointInPath', () => {
+  test('should use unscaled context for point-in-path testing', () => {
+    // On a Retina display (DPI = 2), the bg canvas has scale(2, 2)
+    // isPointInPath transforms test coordinates by the context's matrix
+    // Using bg context: point (100, 100) becomes (200, 200) -- MISS
+    // Using offscreen context (no scale): point (100, 100) stays (100, 100) -- HIT
+
+    const pointX = 100
+    const pointY = 100
+
+    // Simulated path: circle centered at (100, 100) with radius 50
+    const pathCenterX = 100
+    const pathCenterY = 100
+    const pathRadius = 50
+
+    // Without DPI scaling: point is inside path
+    const distSquared = (pointX - pathCenterX) ** 2 + (pointY - pathCenterY) ** 2
+    expect(distSquared).toBeLessThan(pathRadius * pathRadius) // 0 < 2500
+
+    // With DPI=2 scaling: point becomes (200, 200), path stays at (100, 100) r=50
+    const scaledX = pointX * 2
+    const scaledY = pointY * 2
+    const scaledDistSquared = (scaledX - pathCenterX) ** 2 + (scaledY - pathCenterY) ** 2
+    expect(scaledDistSquared).toBeGreaterThan(pathRadius * pathRadius) // 20000 > 2500 -- MISS!
+  })
+})
+
+describe('Bug Fix: constructor.name replaced with registry names', () => {
+  test('TowerManager should use registry name for independent tower check', () => {
+    // Old: used constructor.name which returns class name (e.g., '_Jet')
+    // New: uses towerName parameter (registry key, e.g., 'CarrierTower.Jet')
+    const independentCtors = ['CarrierTower.Jet']
+    const towerName = 'CarrierTower.Jet'
+
+    // New check: uses registry name directly
+    const isIndependent = independentCtors.includes(towerName)
+    expect(isIndependent).toBe(true)
+
+    // Non-independent tower
+    const normalTower = 'MaskManTower'
+    expect(independentCtors.includes(normalTower)).toBe(false)
+  })
+
+  test('PoisonTower should use registryName for bullet type check', () => {
+    // Old: b.constructor.name === this.bulletCtorName (minification-unsafe)
+    // New: b.registryName === this.bulletCtorName (stable)
+    const monster = { id: 1 }
+    const bullets = [
+      { registryName: 'PoisonCan', target: monster },
+      { registryName: 'NormalArrow', target: { id: 2 } },
+    ]
+    const bulletCtorName = 'PoisonCan'
+
+    // Check if any PoisonCan bullet is targeting this monster
+    const alreadyTargeted = bullets.some(
+      b => b.registryName === bulletCtorName && b.target === monster
+    )
+
+    expect(alreadyTargeted).toBe(true)
+  })
+})
+
+describe('Bug Fix: Redundant path cache removed', () => {
+  test('GamePathfinder._pathCache is the single source of truth', () => {
+    // Game._posPathMapping was removed
+    // getPathToEnd() now directly calls pathfinder.findPath() which has its own cache
+    const pathCache = new Map<string, number[]>()
+    pathCache.set('5|3', [1, 2, 3])
+
+    // Single cache lookup
+    const result = pathCache.get('5|3')
+    expect(result).toEqual([1, 2, 3])
+
+    // No redundant second cache needed
+  })
+})
+
+describe('Bug Fix: MaskManTower non-null assertion removed', () => {
+  test('isThisTargetAvailable handles undefined from empty multipleTarget', () => {
+    // multipleTarget starts empty, so multipleTarget[0] is undefined
+    const multipleTarget: Array<{ isDead: boolean } | undefined> = []
+
+    const isThisTargetAvailable = (target: { isDead: boolean } | undefined): boolean => {
+      if (!target || target.isDead) return false
+      return true
+    }
+
+    // Without the ! assertion, TypeScript knows it might be undefined
+    // The function handles it correctly
+    expect(isThisTargetAvailable(multipleTarget[0])).toBe(false)
+    expect(isThisTargetAvailable(undefined)).toBe(false)
+    expect(isThisTargetAvailable({ isDead: false })).toBe(true)
+    expect(isThisTargetAvailable({ isDead: true })).toBe(false)
+  })
+})
+

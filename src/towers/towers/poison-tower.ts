@@ -84,7 +84,7 @@ class PoisonTower extends TowerBase {
 
     // 先在未中毒，且未被任何本类型塔弹药锁定的敌人中快速搜索
     const unTargeted = unPoisoned.filter(m => {
-      return !this.bulletCtl.bullets.some(b => b.constructor.name === this.bulletCtorName && b.target === m)
+      return !this.bulletCtl.bullets.some(b => b.registryName === this.bulletCtorName && b.target === m)
     })
 
     for (const t of unTargeted) {

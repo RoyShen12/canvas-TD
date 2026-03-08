@@ -262,7 +262,7 @@ class MaskManTower extends TowerBase {
   override run(monsters: MonsterBase[]): void {
     if (this.canShoot) {
       for (let idx = 0; idx < this.Slc; idx++) {
-        if (!this.isThisTargetAvailable(this.multipleTarget[idx]!)) {
+        if (!this.isThisTargetAvailable(this.multipleTarget[idx])) {
           this.reChooseTarget(monsters, idx)
         }
       }

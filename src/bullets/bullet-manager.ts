@@ -56,6 +56,7 @@ class BulletManager {
 
     const bullet = new ctor(position, atk, target, image, ...extraArgs)
     bullet.setDamageEmitter(emitter)
+    bullet.registryName = bulletName
     this.bullets.push(bullet)
 
     return bullet
