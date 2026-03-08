@@ -2797,11 +2797,13 @@ class TowerBase extends ItemBase {
         this.gameContext.playAnimation('rank_up', new Position(this.position.x - this.radius, this.position.y - this.radius * 2), w, (w / dim.WIDTH) * dim.HEIGHT, GAME_CONFIG.LEVEL_UP_ANIMATION_SPEED, 0, dim.OFFSET_Y);
     }
     renderRange(context, style = 'rgba(177,188,45,.05)') {
+        const originalFillStyle = context.fillStyle;
         context.fillStyle = style;
         context.beginPath();
         context.arc(this.position.x, this.position.y, this.Rng, 0, Math.PI * 2, true);
         context.closePath();
         context.fill();
+        context.fillStyle = originalFillStyle;
     }
     renderLevel(context) {
         const fontTmp = context.font;
@@ -2819,10 +2821,16 @@ class TowerBase extends ItemBase {
             const py = this.position.y + this.radius * TOWER_RENDER_OFFSETS.RANK_STAR_Y;
             const px = this.position.x + this.radius * TOWER_RENDER_OFFSETS.RANK_STAR_X;
             for (let i = 0; i < l2; i++) {
-                context.drawImage(this.gameContext.getImageBitmap('p_ruby'), px + TOWER_RENDER_OFFSETS.STAR_LARGE_SPACING * i, py, TOWER_RENDER_OFFSETS.STAR_SIZE, TOWER_RENDER_OFFSETS.STAR_SIZE);
+                const rubyImg = this.gameContext.getImageBitmap('p_ruby');
+                if (!rubyImg)
+                    break;
+                context.drawImage(rubyImg, px + TOWER_RENDER_OFFSETS.STAR_LARGE_SPACING * i, py, TOWER_RENDER_OFFSETS.STAR_SIZE, TOWER_RENDER_OFFSETS.STAR_SIZE);
             }
             for (let i = 0; i < l1; i++) {
-                context.drawImage(this.gameContext.getImageBitmap('star_m'), px + TOWER_RENDER_OFFSETS.STAR_SMALL_SPACING * i + TOWER_RENDER_OFFSETS.STAR_LARGE_SPACING * l2, py, TOWER_RENDER_OFFSETS.STAR_SIZE, TOWER_RENDER_OFFSETS.STAR_SIZE);
+                const starImg = this.gameContext.getImageBitmap('star_m');
+                if (!starImg)
+                    break;
+                context.drawImage(starImg, px + TOWER_RENDER_OFFSETS.STAR_SMALL_SPACING * i + TOWER_RENDER_OFFSETS.STAR_LARGE_SPACING * l2, py, TOWER_RENDER_OFFSETS.STAR_SIZE, TOWER_RENDER_OFFSETS.STAR_SIZE);
             }
         }
     }
@@ -4222,13 +4230,22 @@ const RomanNumerals = {
         return idx >= 0 && idx < sequence.length - 1 ? sequence[idx + 1] : current;
     },
     increment(name) {
-        return name
-            .replace(/VII$/, 'VIII')
-            .replace(/VI$/, 'VII')
-            .replace(/IV$/, 'V')
-            .replace(/III$/, 'IV')
-            .replace(/II$/, 'III')
-            .replace(/(?<!I)I$/, 'II');
+        const romanMap = [
+            [/VIII$/, 'IX'],
+            [/VII$/, 'VIII'],
+            [/(?<!V)VI$/, 'VII'],
+            [/(?<!I)V$/, 'VI'],
+            [/IV$/, 'V'],
+            [/III$/, 'IV'],
+            [/II$/, 'III'],
+            [/(?<!I)I$/, 'II'],
+        ];
+        for (const [pattern, replacement] of romanMap) {
+            if (pattern.test(name)) {
+                return name.replace(pattern, replacement);
+            }
+        }
+        return name;
     }
 };
 const TOWER_COLORS = {
@@ -5252,6 +5269,7 @@ class _Jet extends TowerBase {
         ObjectUtils.addFinalGetterProperty(this, 'bulletCtorName', () => _Jet.JetWeapons.getCtorName(this.weaponMode));
         ObjectUtils.addFinalGetterProperty(this, 'level', () => this.carrierTower.level);
         this.calculateDamageRatio = (mst) => this.carrierTower.calculateDamageRatio(mst);
+        this.boundCalculateDamageRatio = this.calculateDamageRatio.bind(this);
     }
     get attackSupplement() {
         return this.weaponMode === 1
@@ -5292,7 +5310,7 @@ class _Jet extends TowerBase {
         return 0;
     }
     gemHitHook(_idx, monsters) {
-        if (this.carrierTower.gem && this.target) {
+        if (this.carrierTower.gem && this.target && !this.target.isDead) {
             this.carrierTower.gem.hitHook(this.carrierTower, this.target, monsters);
         }
     }

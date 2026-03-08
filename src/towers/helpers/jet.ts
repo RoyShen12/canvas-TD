@@ -110,6 +110,9 @@ class _Jet extends TowerBase {
 
     // 绑定伤害计算
     this.calculateDamageRatio = (mst: MonsterBase) => this.carrierTower.calculateDamageRatio(mst)
+
+    // 重新绑定 boundCalculateDamageRatio（super() 中绑定的是原始方法，此处已替换）
+    this.boundCalculateDamageRatio = this.calculateDamageRatio.bind(this)
   }
 
   /**
@@ -170,7 +173,7 @@ class _Jet extends TowerBase {
   }
 
   override gemHitHook(_idx: number, monsters: MonsterBase[]): void {
-    if (this.carrierTower.gem && this.target) {
+    if (this.carrierTower.gem && this.target && !this.target.isDead) {
       this.carrierTower.gem.hitHook(this.carrierTower, this.target, monsters)
     }
   }

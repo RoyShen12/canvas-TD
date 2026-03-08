@@ -94,13 +94,22 @@ const RomanNumerals = {
 
   /** 替换字符串中的罗马数字为下一个 */
   increment(name: string): string {
+    const romanMap: [RegExp, string][] = [
+      [/VIII$/, 'IX'],
+      [/VII$/, 'VIII'],
+      [/(?<!V)VI$/, 'VII'],
+      [/(?<!I)V$/, 'VI'],
+      [/IV$/, 'V'],
+      [/III$/, 'IV'],
+      [/II$/, 'III'],
+      [/(?<!I)I$/, 'II'],
+    ]
+    for (const [pattern, replacement] of romanMap) {
+      if (pattern.test(name)) {
+        return name.replace(pattern, replacement)
+      }
+    }
     return name
-      .replace(/VII$/, 'VIII')
-      .replace(/VI$/, 'VII')
-      .replace(/IV$/, 'V')
-      .replace(/III$/, 'IV')
-      .replace(/II$/, 'III')
-      .replace(/(?<!I)I$/, 'II')
   }
 } as const
 

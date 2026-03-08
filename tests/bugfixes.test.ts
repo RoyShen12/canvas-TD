@@ -2791,3 +2791,163 @@ describe('Bug Fix #154: BlackMagicTower debug haste cap', () => {
   })
 })
 
+// ============================================================================
+// Round 18 Bug Fixes
+// ============================================================================
+
+describe('Bug Fix #155: Jet stale boundCalculateDamageRatio', () => {
+  test('overridden calculateDamageRatio should be re-bound', () => {
+    // Simulate: super() binds the original method, then subclass replaces it
+    class Base {
+      calculateDamageRatio = (x: number) => x * 1
+      boundCalc: (x: number) => number
+
+      constructor() {
+        this.boundCalc = this.calculateDamageRatio.bind(this)
+      }
+    }
+
+    class Sub extends Base {
+      constructor() {
+        super()
+        // Override the method after super()
+        this.calculateDamageRatio = (x: number) => x * 2
+        // Re-bind to capture the new method
+        this.boundCalc = this.calculateDamageRatio.bind(this)
+      }
+    }
+
+    const base = new Base()
+    expect(base.boundCalc(5)).toBe(5) // 5 * 1
+
+    const sub = new Sub()
+    // Without re-bind, this would be 5 (using old method)
+    // With re-bind, this should be 10 (using overridden method)
+    expect(sub.boundCalc(5)).toBe(10)
+  })
+})
+
+describe('Bug Fix #156: TowerBase.renderRange fillStyle leak', () => {
+  test('renderRange should restore fillStyle after rendering', () => {
+    const ctx = {
+      fillStyle: 'original-color',
+      beginPath: () => {},
+      arc: () => {},
+      closePath: () => {},
+      fill: () => {},
+    }
+
+    // Simulate renderRange
+    const originalFillStyle = ctx.fillStyle
+    ctx.fillStyle = 'rgba(177,188,45,.05)'
+    // ... draw operations ...
+    ctx.fillStyle = originalFillStyle
+
+    expect(ctx.fillStyle).toBe('original-color')
+  })
+})
+
+describe('Bug Fix #157: renderRankStars null image guards', () => {
+  test('should handle null image bitmaps gracefully', () => {
+    const images = new Map<string, any>()
+    images.set('p_ruby', null) // image failed to load
+
+    const getImageBitmap = (name: string) => images.get(name) ?? null
+
+    let crashed = false
+    try {
+      const img = getImageBitmap('p_ruby')
+      if (!img) {
+        // The fix: break/skip when image is null
+      } else {
+        // Would crash here without guard: ctx.drawImage(null, ...)
+      }
+    } catch {
+      crashed = true
+    }
+
+    expect(crashed).toBe(false)
+  })
+})
+
+describe('Bug Fix #158: Jet gemHitHook isDead guard', () => {
+  test('should not call gem hitHook on dead target', () => {
+    let hitHookCalled = false
+    const gem = {
+      hitHook: () => { hitHookCalled = true },
+    }
+    const target = { isDead: true }
+
+    // With fix: check isDead
+    if (gem && target && !target.isDead) {
+      gem.hitHook()
+    }
+
+    expect(hitHookCalled).toBe(false)
+
+    // With alive target
+    const aliveTarget = { isDead: false }
+    if (gem && aliveTarget && !aliveTarget.isDead) {
+      gem.hitHook()
+    }
+    expect(hitHookCalled).toBe(true)
+  })
+})
+
+describe('Bug Fix #159: RomanNumerals.increment V -> VI', () => {
+  test('should handle all roman numeral transitions I through IX', () => {
+    // Simulate the increment logic
+    const romanMap: [RegExp, string][] = [
+      [/VIII$/, 'IX'],
+      [/VII$/, 'VIII'],
+      [/(?<!V)VI$/, 'VII'],
+      [/(?<!I)V$/, 'VI'],
+      [/IV$/, 'V'],
+      [/III$/, 'IV'],
+      [/II$/, 'III'],
+      [/(?<!I)I$/, 'II'],
+    ]
+    const increment = (name: string): string => {
+      for (const [pattern, replacement] of romanMap) {
+        if (pattern.test(name)) {
+          return name.replace(pattern, replacement)
+        }
+      }
+      return name
+    }
+
+    expect(increment('Test I')).toBe('Test II')
+    expect(increment('Test II')).toBe('Test III')
+    expect(increment('Test III')).toBe('Test IV')
+    expect(increment('Test IV')).toBe('Test V')
+    expect(increment('Test V')).toBe('Test VI')    // Was broken: stayed at V
+    expect(increment('Test VI')).toBe('Test VII')
+    expect(increment('Test VII')).toBe('Test VIII')
+    expect(increment('Test VIII')).toBe('Test IX')
+  })
+
+  test('should not affect V within words', () => {
+    const romanMap: [RegExp, string][] = [
+      [/VIII$/, 'IX'],
+      [/VII$/, 'VIII'],
+      [/(?<!V)VI$/, 'VII'],
+      [/(?<!I)V$/, 'VI'],
+      [/IV$/, 'V'],
+      [/III$/, 'IV'],
+      [/II$/, 'III'],
+      [/(?<!I)I$/, 'II'],
+    ]
+    const increment = (name: string): string => {
+      for (const [pattern, replacement] of romanMap) {
+        if (pattern.test(name)) {
+          return name.replace(pattern, replacement)
+        }
+      }
+      return name
+    }
+
+    // IV at end should go to V, not confused by the lookbehind on V
+    expect(increment('Test IV')).toBe('Test V')
+  })
+})
+

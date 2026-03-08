@@ -126,7 +126,7 @@ abstract class TowerBase extends ItemBase {
 
   /** 缓存的绑定函数 */
   public readonly boundRecordDamage: (monster: MonsterBase) => void
-  public readonly boundCalculateDamageRatio: (monster: MonsterBase) => number
+  public boundCalculateDamageRatio: (monster: MonsterBase) => number
 
   public _gridIx!: number
   public _gridIy!: number
@@ -447,11 +447,13 @@ abstract class TowerBase extends ItemBase {
   // ==================== 渲染方法 ====================
 
   renderRange(context: CanvasRenderingContext2D, style = 'rgba(177,188,45,.05)'): void {
+    const originalFillStyle = context.fillStyle
     context.fillStyle = style
     context.beginPath()
     context.arc(this.position.x, this.position.y, this.Rng, 0, Math.PI * 2, true)
     context.closePath()
     context.fill()
+    context.fillStyle = originalFillStyle
   }
 
   renderLevel(context: WrappedCanvasRenderingContext2D): void {
@@ -477,8 +479,10 @@ abstract class TowerBase extends ItemBase {
       const px = this.position.x + this.radius * TOWER_RENDER_OFFSETS.RANK_STAR_X
 
       for (let i = 0; i < l2; i++) {
+        const rubyImg = this.gameContext.getImageBitmap('p_ruby')
+        if (!rubyImg) break
         context.drawImage(
-          this.gameContext.getImageBitmap('p_ruby')!,
+          rubyImg,
           px + TOWER_RENDER_OFFSETS.STAR_LARGE_SPACING * i,
           py,
           TOWER_RENDER_OFFSETS.STAR_SIZE,
@@ -486,8 +490,10 @@ abstract class TowerBase extends ItemBase {
         )
       }
       for (let i = 0; i < l1; i++) {
+        const starImg = this.gameContext.getImageBitmap('star_m')
+        if (!starImg) break
         context.drawImage(
-          this.gameContext.getImageBitmap('star_m')!,
+          starImg,
           px + TOWER_RENDER_OFFSETS.STAR_SMALL_SPACING * i + TOWER_RENDER_OFFSETS.STAR_LARGE_SPACING * l2,
           py,
           TOWER_RENDER_OFFSETS.STAR_SIZE,
