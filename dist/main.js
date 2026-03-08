@@ -3185,7 +3185,7 @@ class MonsterBase extends ItemBase {
             isMaxLevel: true,
             level: this._level,
             price: [],
-            constructorRef: TowerBase,
+            constructorRef: MonsterBase,
             inlayGem: () => null,
         };
         StatusBoardRenderer.render(data, bx1, by1, showGemPanel, showMoreDetail, 180, Game.callElement.bind(Game), Game.callMoney.bind(Game), Game.updateGemPoint, (delta) => {
@@ -7853,7 +7853,7 @@ class GameUIManager {
                 marginLeft: '10px',
             },
             refresh: () => {
-                spn.textContent = '升级步长 ' + config.stepDivide;
+                spn.textContent = '升级步长 ' + ipt.value;
             },
         });
         spn.refresh();

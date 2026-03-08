@@ -117,7 +117,7 @@ class GameUIManager {
         marginLeft: '10px',
       },
       refresh: () => {
-        spn.textContent = '升级步长 ' + config.stepDivide
+        spn.textContent = '升级步长 ' + ipt.value
       },
     }) as WithRefresh<HTMLSpanElement>
     spn.refresh()

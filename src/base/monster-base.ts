@@ -471,7 +471,7 @@ class MonsterBase extends ItemBase {
       isMaxLevel: true,
       level: this._level,
       price: [],
-      constructorRef: TowerBase,
+      constructorRef: MonsterBase as unknown as typeof TowerBase,
       inlayGem: () => null as unknown as GemBase,
     }
 
