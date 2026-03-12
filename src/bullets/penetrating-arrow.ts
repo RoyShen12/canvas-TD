@@ -54,8 +54,21 @@ class PenetratingArrow extends BulletBase {
     this.armorPenetration = armorPenetration
     this.damageDecay = damageDecay
 
-    // 计算飞行目的地：从当前位置向目标方向延伸到屏幕对角线长度
-    this.destination = this.position.copy().moveTo(target.position, this.gameContext.getDiagonalLength())
+    // 计算飞行目的地：从当前位置沿指向目标的方向延伸到屏幕对角线长度之外
+    const dx = target.position.x - this.position.x
+    const dy = target.position.y - this.position.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    const diag = this.gameContext.getDiagonalLength()
+    if (dist > 0) {
+      const invDist = 1 / dist
+      this.destination = new Position(
+        this.position.x + dx * invDist * diag,
+        this.position.y + dy * invDist * diag
+      )
+    } else {
+      // 目标与箭重合，取向右方向
+      this.destination = new Position(this.position.x + diag, this.position.y)
+    }
 
     // 目的地已计算，不再需要持有目标引用（允许目标被 GC）
     this.target = null

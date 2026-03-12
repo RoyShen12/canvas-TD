@@ -207,37 +207,61 @@ class GamePathfinder {
 
   /**
    * 检查是否有任何可通行格子无法到达终点
+   * 使用 BFS 从终点洪泛填充，O(V) 判断所有可通行格是否可达
    * @param grids 游戏网格数组
-   * @param wallBoundary 围墙边界数组
+   * @param _wallBoundary 围墙边界数组（BFS 直接在 grids 上操作，不再需要）
    * @returns 如果有格子被阻断返回 true
    */
-  private _hasAnyBlockedPath(grids: number[][], wallBoundary: number[][]): boolean {
-    const graph = this._getOrCreateGraph(grids, wallBoundary)
-    const destX = this._destinationGrid.gridX
-    const destY = this._destinationGrid.gridY
+  private _hasAnyBlockedPath(grids: number[][], _wallBoundary: number[][]): boolean {
+    const rows = grids.length
+    if (rows === 0) return true
+    const cols = grids[0]!.length
 
-    for (let rowI = 0; rowI < grids.length; rowI++) {
-      const row = grids[rowI]
-      if (!row) continue
+    // 终点在 grids 中的坐标（不含围墙偏移）
+    const destRow = this._destinationGrid.gridX - 1
+    const destCol = this._destinationGrid.gridY - 1
 
-      for (let colI = 0; colI < row.length; colI++) {
-        // 跳过障碍格子
-        if (row[colI] !== 1) continue
+    // 终点不可达或越界
+    if (destRow < 0 || destRow >= rows || destCol < 0 || destCol >= cols) return true
+    if (grids[destRow]![destCol] !== 1) return true
 
-        // 跳过终点格子
-        if (rowI === destX - 1 && colI === destY - 1) continue
+    // BFS 从终点开始洪泛
+    const visited = new Uint8Array(rows * cols)
+    const queue: number[] = []
+    const startIdx = destRow * cols + destCol
+    visited[startIdx] = 1
+    queue.push(startIdx)
 
-        // 检查是否可以到达终点
-        const startNode = graph.grid[rowI + 1]?.[colI + 1]
-        const endNode = graph.grid[destX]?.[destY]
+    const directions = [-cols, cols, -1, 1] // 上下左右
 
-        if (!startNode || !endNode) continue
+    let head = 0
+    while (head < queue.length) {
+      const idx = queue[head++]!
+      const r = (idx / cols) | 0
 
-        // 清理上次搜索的脏状态，确保图节点属性被重置
-        graph.cleanDirty()
+      for (let d = 0; d < 4; d++) {
+        const dir = directions[d]!
+        const ni = idx + dir
+        const nr = (ni / cols) | 0
+        const nc = ni % cols
 
-        const path = Astar.astar.search(graph, startNode, endNode)
-        if (path.length === 0) {
+        // 边界检查：左右移动时行号不能变
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue
+        if (d >= 2 && nr !== r) continue // 左右方向越行
+
+        if (visited[ni]) continue
+        if (grids[nr]![nc] !== 1) continue
+
+        visited[ni] = 1
+        queue.push(ni)
+      }
+    }
+
+    // 检查所有可通行格是否都被访问到
+    for (let r = 0; r < rows; r++) {
+      const row = grids[r]!
+      for (let c = 0; c < cols; c++) {
+        if (row[c] === 1 && !visited[r * cols + c]) {
           return true
         }
       }

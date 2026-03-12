@@ -178,3 +178,6 @@ Uses Vitest. Test files mock their own dependencies (not importing from source d
 - `tests/monster.test.ts` - Monster scaling, damage, healing
 - `tests/motion.test.ts` - Position, Vector, PolarVector
 - `tests/bugfixes.test.ts` - Regression tests for critical bug fixes
+- `tests/pathfinder.test.ts` - GamePathfinder coordinate conversion, BFS path blocking
+- `tests/wave-manager.test.ts` - Wave, WaveManager state machine, WaveFactory generation
+- `tests/debuff-manager.test.ts` - DebuffManager CRUD, stacking, tick/expiry, modifiers

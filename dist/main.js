@@ -3439,7 +3439,17 @@ class PenetratingArrow extends BulletBase {
         super(position, PENETRATING_ARROW_DEFAULTS.RADIUS, 0, null, image, atk, PenetratingArrow.BASE_VELOCITY, target);
         this.armorPenetration = armorPenetration;
         this.damageDecay = damageDecay;
-        this.destination = this.position.copy().moveTo(target.position, this.gameContext.getDiagonalLength());
+        const dx = target.position.x - this.position.x;
+        const dy = target.position.y - this.position.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const diag = this.gameContext.getDiagonalLength();
+        if (dist > 0) {
+            const invDist = 1 / dist;
+            this.destination = new Position(this.position.x + dx * invDist * diag, this.position.y + dy * invDist * diag);
+        }
+        else {
+            this.destination = new Position(this.position.x + diag, this.position.y);
+        }
         this.target = null;
     }
     run(monsters) {
@@ -7320,26 +7330,48 @@ class GamePathfinder {
         }
         return this._graphCache;
     }
-    _hasAnyBlockedPath(grids, wallBoundary) {
-        const graph = this._getOrCreateGraph(grids, wallBoundary);
-        const destX = this._destinationGrid.gridX;
-        const destY = this._destinationGrid.gridY;
-        for (let rowI = 0; rowI < grids.length; rowI++) {
-            const row = grids[rowI];
-            if (!row)
-                continue;
-            for (let colI = 0; colI < row.length; colI++) {
-                if (row[colI] !== 1)
+    _hasAnyBlockedPath(grids, _wallBoundary) {
+        const rows = grids.length;
+        if (rows === 0)
+            return true;
+        const cols = grids[0].length;
+        const destRow = this._destinationGrid.gridX - 1;
+        const destCol = this._destinationGrid.gridY - 1;
+        if (destRow < 0 || destRow >= rows || destCol < 0 || destCol >= cols)
+            return true;
+        if (grids[destRow][destCol] !== 1)
+            return true;
+        const visited = new Uint8Array(rows * cols);
+        const queue = [];
+        const startIdx = destRow * cols + destCol;
+        visited[startIdx] = 1;
+        queue.push(startIdx);
+        const directions = [-cols, cols, -1, 1];
+        let head = 0;
+        while (head < queue.length) {
+            const idx = queue[head++];
+            const r = (idx / cols) | 0;
+            for (let d = 0; d < 4; d++) {
+                const dir = directions[d];
+                const ni = idx + dir;
+                const nr = (ni / cols) | 0;
+                const nc = ni % cols;
+                if (nr < 0 || nr >= rows || nc < 0 || nc >= cols)
                     continue;
-                if (rowI === destX - 1 && colI === destY - 1)
+                if (d >= 2 && nr !== r)
                     continue;
-                const startNode = graph.grid[rowI + 1]?.[colI + 1];
-                const endNode = graph.grid[destX]?.[destY];
-                if (!startNode || !endNode)
+                if (visited[ni])
                     continue;
-                graph.cleanDirty();
-                const path = Astar.astar.search(graph, startNode, endNode);
-                if (path.length === 0) {
+                if (grids[nr][nc] !== 1)
+                    continue;
+                visited[ni] = 1;
+                queue.push(ni);
+            }
+        }
+        for (let r = 0; r < rows; r++) {
+            const row = grids[r];
+            for (let c = 0; c < cols; c++) {
+                if (row[c] === 1 && !visited[r * cols + c]) {
                     return true;
                 }
             }
